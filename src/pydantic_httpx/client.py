@@ -129,6 +129,18 @@ class BaseClient:
             # Build request parameters
             request_params: dict[str, Any] = {"headers": headers, "timeout": timeout}
 
+            # Add cookies if provided
+            if endpoint.cookies is not None:
+                request_params["cookies"] = endpoint.cookies
+
+            # Add auth if provided
+            if endpoint.auth is not None:
+                request_params["auth"] = endpoint.auth
+
+            # Add follow_redirects if provided
+            if endpoint.follow_redirects is not None:
+                request_params["follow_redirects"] = endpoint.follow_redirects
+
             # Handle request body
             if endpoint.request_model and "json" in kwargs:
                 # Validate request body if model provided
