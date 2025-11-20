@@ -83,7 +83,9 @@ class DataResponse(Generic[T]):
 
     def __repr__(self) -> str:
         cls_name = self.__class__.__name__
-        return f"{cls_name}(status_code={self.status_code}, data={self.data!r})"
+        status_code = self.status_code
+        data = self.data
+        return f"{cls_name}({status_code=}, {data=})"
 
     def __str__(self) -> str:
         return f"<{self.__class__.__name__} [{self.status_code}]>"
