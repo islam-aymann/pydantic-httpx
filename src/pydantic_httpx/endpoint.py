@@ -5,7 +5,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import quote
 
+import httpx
 from pydantic import BaseModel
 
 from pydantic_httpx.types import HTTPMethod
@@ -26,6 +28,9 @@ class BaseEndpoint:
         query_model: Optional Pydantic model for query parameters.
         timeout: Optional request-specific timeout override.
         headers: Optional request-specific headers.
+        cookies: Optional request-specific cookies.
+        auth: Optional authentication (Basic, Digest, Bearer, or custom).
+        follow_redirects: Optional override for redirect following behavior.
     """
 
     method: HTTPMethod
@@ -34,6 +39,9 @@ class BaseEndpoint:
     query_model: type[BaseModel] | None = None
     timeout: float | None = None
     headers: dict[str, str] = field(default_factory=dict)
+    cookies: dict[str, str] | None = None
+    auth: httpx.Auth | tuple[str, str] | str | None = None
+    follow_redirects: bool | None = None
 
     def __post_init__(self) -> None:
         """Normalize path after initialization."""
@@ -83,10 +91,12 @@ class BaseEndpoint:
         if missing_params:
             raise ValueError(f"Missing required path parameters: {missing_params}")
 
-        # Replace {param} with actual values
+        # Replace {param} with actual values (URL-encoded)
         path = self.path
         for param_name, param_value in params.items():
-            path = path.replace(f"{{{param_name}}}", str(param_value))
+            # URL-encode the parameter value (safe='' means encode everything)
+            encoded_value = quote(str(param_value), safe="")
+            path = path.replace(f"{{{param_name}}}", encoded_value)
 
         return path
 
@@ -152,6 +162,9 @@ class GET(BaseEndpoint):
         query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        auth: httpx.Auth | tuple[str, str] | str | None = None,
+        follow_redirects: bool | None = None,
     ) -> None:
         super().__init__(
             method=HTTPMethod.GET,
@@ -160,6 +173,9 @@ class GET(BaseEndpoint):
             query_model=query_model,
             timeout=timeout,
             headers=headers or {},
+            cookies=cookies,
+            auth=auth,
+            follow_redirects=follow_redirects,
         )
 
 
@@ -179,6 +195,9 @@ class POST(BaseEndpoint):
         query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        auth: httpx.Auth | tuple[str, str] | str | None = None,
+        follow_redirects: bool | None = None,
     ) -> None:
         super().__init__(
             method=HTTPMethod.POST,
@@ -187,6 +206,9 @@ class POST(BaseEndpoint):
             query_model=query_model,
             timeout=timeout,
             headers=headers or {},
+            cookies=cookies,
+            auth=auth,
+            follow_redirects=follow_redirects,
         )
 
 
@@ -206,6 +228,9 @@ class PUT(BaseEndpoint):
         query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        auth: httpx.Auth | tuple[str, str] | str | None = None,
+        follow_redirects: bool | None = None,
     ) -> None:
         super().__init__(
             method=HTTPMethod.PUT,
@@ -214,6 +239,9 @@ class PUT(BaseEndpoint):
             query_model=query_model,
             timeout=timeout,
             headers=headers or {},
+            cookies=cookies,
+            auth=auth,
+            follow_redirects=follow_redirects,
         )
 
 
@@ -233,6 +261,9 @@ class PATCH(BaseEndpoint):
         query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        auth: httpx.Auth | tuple[str, str] | str | None = None,
+        follow_redirects: bool | None = None,
     ) -> None:
         super().__init__(
             method=HTTPMethod.PATCH,
@@ -241,6 +272,9 @@ class PATCH(BaseEndpoint):
             query_model=query_model,
             timeout=timeout,
             headers=headers or {},
+            cookies=cookies,
+            auth=auth,
+            follow_redirects=follow_redirects,
         )
 
 
@@ -260,6 +294,9 @@ class DELETE(BaseEndpoint):
         query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        auth: httpx.Auth | tuple[str, str] | str | None = None,
+        follow_redirects: bool | None = None,
     ) -> None:
         super().__init__(
             method=HTTPMethod.DELETE,
@@ -268,6 +305,9 @@ class DELETE(BaseEndpoint):
             query_model=query_model,
             timeout=timeout,
             headers=headers or {},
+            cookies=cookies,
+            auth=auth,
+            follow_redirects=follow_redirects,
         )
 
 
@@ -287,6 +327,9 @@ class HEAD(BaseEndpoint):
         query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        auth: httpx.Auth | tuple[str, str] | str | None = None,
+        follow_redirects: bool | None = None,
     ) -> None:
         super().__init__(
             method=HTTPMethod.HEAD,
@@ -295,6 +338,9 @@ class HEAD(BaseEndpoint):
             query_model=query_model,
             timeout=timeout,
             headers=headers or {},
+            cookies=cookies,
+            auth=auth,
+            follow_redirects=follow_redirects,
         )
 
 
@@ -314,6 +360,9 @@ class OPTIONS(BaseEndpoint):
         query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        auth: httpx.Auth | tuple[str, str] | str | None = None,
+        follow_redirects: bool | None = None,
     ) -> None:
         super().__init__(
             method=HTTPMethod.OPTIONS,
@@ -322,4 +371,7 @@ class OPTIONS(BaseEndpoint):
             query_model=query_model,
             timeout=timeout,
             headers=headers or {},
+            cookies=cookies,
+            auth=auth,
+            follow_redirects=follow_redirects,
         )

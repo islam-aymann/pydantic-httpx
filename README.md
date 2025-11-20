@@ -1,8 +1,19 @@
 # pydantic-httpx
 
-Integration library for HTTPX with Pydantic models for type-safe HTTP client requests and responses.
+A type-safe HTTP client library that combines the power of HTTPX with Pydantic validation. Build declarative, resource-based API clients with automatic request/response validation, full IDE support, and clean Python syntax.
 
 **Status**: 🚧 Under active development - Phase 2 (Core Logic) complete
+
+## What It Does
+
+`pydantic-httpx` lets you define HTTP API clients using Pydantic models and type hints. Instead of manually constructing requests and parsing responses, you declare your API structure once and get:
+
+- Automatic validation of requests and responses
+- Full type safety and IDE autocomplete
+- Clean, declarative API definitions
+- All HTTPX features (auth, cookies, timeouts, etc.)
+
+**Status**: Production-ready for synchronous HTTP clients. Async support coming in Phase 3.
 
 ## Features
 
@@ -10,8 +21,10 @@ Integration library for HTTPX with Pydantic models for type-safe HTTP client req
 - ✅ **Pydantic Integration**: Automatic request/response validation using Pydantic models
 - ✅ **Explicit API**: Resource-based organization with clear endpoint definitions
 - ✅ **Config-Driven**: Familiar `client_config` and `resource_config` (like Pydantic's `model_config`)
-- 🚧 **Sync & Async**: Support for both sync and async operations (async coming soon)
-- 🚧 **Rich Error Handling**: Detailed exceptions with response context (foundation complete)
+- ✅ **Rich Error Handling**: Detailed exceptions with response context
+- ✅ **Full HTTPX Integration**: Query params, headers, cookies, auth, timeouts, redirects
+- ✅ **URL Encoding**: Automatic encoding of special characters in path parameters
+- 🚧 **Sync & Async**: Sync support complete, async coming in Phase 3
 
 ## Quick Example
 
@@ -52,6 +65,41 @@ user = client.users.get(id=1)
 print(user.data.name)  # Type-safe access!
 ```
 
+### Advanced Features
+
+```python
+from httpx import BasicAuth
+
+# Query parameters with validation
+class SearchParams(BaseModel):
+    status: str
+    limit: int = 10
+
+class UserResource(BaseResource):
+    resource_config = ResourceConfig(prefix="/users")
+
+    # Query parameters
+    search: DataResponse[list[User]] = GET("/search", query_model=SearchParams)
+
+    # Custom headers and auth
+    protected: DataResponse[User] = GET(
+        "/{id}",
+        headers={"X-API-Version": "v1"},
+        auth=BasicAuth("user", "pass")
+    )
+
+    # Custom timeout and cookies
+    slow_endpoint: DataResponse[dict] = GET(
+        "/data",
+        timeout=30.0,
+        cookies={"session": "abc123"}
+    )
+
+# Usage
+client = APIClient()
+results = client.users.search(status="active", limit=5)
+```
+
 ## Installation
 
 ```bash
@@ -74,10 +122,17 @@ pip install pydantic-httpx
 - [x] BaseResource implementation with descriptor protocol
 - [x] BaseClient implementation with HTTPX integration
 - [x] Request/response serialization with Pydantic validation
-- [x] Path parameter interpolation
+- [x] Path parameter interpolation with URL encoding
+- [x] Query parameters (with/without Pydantic validation)
+- [x] Custom headers per endpoint
+- [x] Custom timeout per endpoint
+- [x] Authentication support (Basic, Bearer, custom `httpx.Auth`)
+- [x] Cookies support
+- [x] Redirect control (`follow_redirects`)
+- [x] URL encoding for special characters in path params
 - [x] HTTPMethod as str, Enum for better type safety
 - [x] Assignment-based API (following modern Python conventions)
-- [x] Comprehensive test suite (88 tests, 95% coverage)
+- [x] Comprehensive test suite (99 tests, 96% coverage)
 
 ### 📋 Phase 3: Advanced Features (Planned)
 - [ ] Async support (`AsyncBaseClient`, `AsyncBaseResource`)
