@@ -2,7 +2,19 @@
 
 __version__ = "0.1.0"
 
+from pydantic_httpx.client import BaseClient
 from pydantic_httpx.config import ClientConfig, ResourceConfig
+from pydantic_httpx.endpoint import (
+    DELETE,
+    GET,
+    HEAD,
+    OPTIONS,
+    PATCH,
+    POST,
+    PUT,
+    BaseEndpoint,
+    Endpoint,
+)
 from pydantic_httpx.exceptions import (
     HTTPError,
     RequestError,
@@ -10,7 +22,9 @@ from pydantic_httpx.exceptions import (
     ResponseError,
     ValidationError,
 )
+from pydantic_httpx.resource import BaseResource
 from pydantic_httpx.response import DataResponse
+from pydantic_httpx.types import VALID_HTTP_METHODS, HTTPMethod
 
 __all__ = [
     "__version__",
@@ -25,4 +39,20 @@ __all__ = [
     "RequestError",
     # Response
     "DataResponse",
+    # Client & Resources
+    "BaseClient",
+    "BaseResource",
+    # Endpoints
+    "BaseEndpoint",
+    "Endpoint",
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "HEAD",
+    "OPTIONS",
+    # Types
+    "HTTPMethod",
+    "VALID_HTTP_METHODS",
 ]

@@ -1,0 +1,245 @@
+"""Base HTTP client with Pydantic validation."""
+
+from __future__ import annotations
+
+from typing import Any, TypeVar, get_args, get_origin
+
+import httpx
+from pydantic import BaseModel
+from pydantic import ValidationError as PydanticValidationError
+
+from pydantic_httpx.config import ClientConfig
+from pydantic_httpx.endpoint import BaseEndpoint
+from pydantic_httpx.exceptions import HTTPError, RequestError, ValidationError
+from pydantic_httpx.resource import BaseResource
+from pydantic_httpx.response import DataResponse
+from pydantic_httpx.types import HTTPMethod
+
+T = TypeVar("T")
+
+
+class BaseClient:
+    """
+    Base HTTP client that integrates httpx with Pydantic models.
+
+    This client wraps httpx.Client and provides automatic request/response
+    validation using Pydantic models defined in resource classes.
+
+    Attributes:
+        client_config: Configuration for the HTTP client.
+
+    Example:
+        >>> from pydantic import BaseModel
+        >>> from pydantic_httpx import (
+        >>>     BaseClient, BaseResource, ClientConfig, GET, DataResponse
+        >>> )
+        >>>
+        >>> class User(BaseModel):
+        >>>     id: int
+        >>>     name: str
+        >>>
+        >>> class UserResource(BaseResource):
+        >>>     resource_config = ResourceConfig(prefix="/users")
+        >>>     get: DataResponse[User] = GET("/{id}")
+        >>>
+        >>> class APIClient(BaseClient):
+        >>>     client_config = ClientConfig(base_url="https://api.example.com")
+        >>>     users: UserResource
+        >>>
+        >>> client = APIClient()
+        >>> response = client.users.get(id=1)
+        >>> user = response.data  # Type: User
+    """
+
+    client_config: ClientConfig = ClientConfig()
+
+    def __init__(self) -> None:
+        """Initialize the client and bind resources."""
+        # Create httpx client
+        self._httpx_client = httpx.Client(
+            base_url=self.client_config.base_url,
+            timeout=self.client_config.timeout,
+            headers=self.client_config.headers,
+            follow_redirects=self.client_config.follow_redirects,
+        )
+
+        # Initialize and bind resources
+        self._init_resources()
+
+    def __init_subclass__(cls) -> None:
+        """Called when a subclass is created to parse resource attributes."""
+        super().__init_subclass__()
+
+        # Parse annotations to find resources
+        annotations = getattr(cls, "__annotations__", {})
+
+        for attr_name, annotation in annotations.items():
+            # Check if it's a BaseResource subclass
+            if isinstance(annotation, type) and issubclass(annotation, BaseResource):
+                # Store the resource class for later initialization
+                if not hasattr(cls, "_resource_classes"):
+                    cls._resource_classes = {}  # type: ignore[attr-defined]
+                cls._resource_classes[attr_name] = annotation  # type: ignore[attr-defined]
+
+    def _init_resources(self) -> None:
+        """Initialize resource instances and bind them to this client."""
+        resource_classes = getattr(self.__class__, "_resource_classes", {})
+
+        for attr_name, resource_class in resource_classes.items():
+            # Create resource instance bound to this client
+            resource_instance = resource_class(client=self)
+            setattr(self, attr_name, resource_instance)
+
+    def _execute_request(
+        self,
+        method: HTTPMethod | str,
+        path: str,
+        response_type: type,
+        endpoint: BaseEndpoint,
+        **kwargs: Any,
+    ) -> DataResponse[Any]:
+        """
+        Execute an HTTP request and validate the response.
+
+        Args:
+            method: HTTP method (GET, POST, etc.).
+            path: Full request path.
+            response_type: Expected response type (DataResponse[T]).
+            endpoint: BaseEndpoint metadata.
+            **kwargs: Request parameters (query params, body, etc.).
+
+        Returns:
+            DataResponse with validated data.
+
+        Raises:
+            HTTPError: If response status code indicates an error.
+            ValidationError: If response validation fails.
+            RequestError: If the request fails to execute.
+        """
+        try:
+            # Extract the inner type from DataResponse[T]
+            inner_type = self._extract_response_model(response_type)
+
+            # Merge endpoint headers with config headers
+            headers = {**self.client_config.headers, **endpoint.headers}
+
+            # Determine timeout (endpoint-specific or client default)
+            timeout = endpoint.timeout or self.client_config.timeout
+
+            # Build request parameters
+            request_params: dict[str, Any] = {"headers": headers, "timeout": timeout}
+
+            # Handle request body
+            if endpoint.request_model and "json" in kwargs:
+                # Validate request body if model provided
+                request_data = endpoint.request_model(**kwargs["json"])
+                request_params["json"] = request_data.model_dump()
+            elif "json" in kwargs:
+                request_params["json"] = kwargs["json"]
+
+            # Handle query parameters (exclude 'json' since it's for body)
+            query_kwargs = {k: v for k, v in kwargs.items() if k != "json"}
+            if endpoint.query_model and query_kwargs:
+                # Validate query params if model provided
+                query_data = endpoint.query_model(**query_kwargs)
+                request_params["params"] = query_data.model_dump()
+            elif query_kwargs:
+                # Pass remaining kwargs as query params
+                request_params["params"] = query_kwargs
+
+            # Execute HTTP request (convert enum to string if needed)
+            method_str = method.value if isinstance(method, HTTPMethod) else method
+            response = self._httpx_client.request(method_str, path, **request_params)
+
+            # Check for HTTP errors if configured
+            if self.client_config.raise_on_error and response.is_error:
+                raise HTTPError(response)
+
+            # Validate and parse response
+            validated_data = self._validate_response(response, inner_type)
+
+            return DataResponse(response, validated_data)
+
+        except httpx.TimeoutException as e:
+            raise RequestError(f"Request timeout: {e}", original_exception=e) from e
+        except httpx.RequestError as e:
+            raise RequestError(f"Request failed: {e}", original_exception=e) from e
+
+    def _extract_response_model(self, response_type: type) -> Any:
+        """
+        Extract the inner type from DataResponse[T].
+
+        Args:
+            response_type: The full response type (e.g., DataResponse[User]).
+
+        Returns:
+            The inner type T.
+        """
+        args = get_args(response_type)
+        if args:
+            return args[0]
+        return response_type
+
+    def _validate_response(self, response: httpx.Response, model: type) -> Any:
+        """
+        Validate response data against a Pydantic model.
+
+        Args:
+            response: The httpx response.
+            model: The Pydantic model to validate against.
+
+        Returns:
+            Validated data (model instance, list of models, dict, or None).
+
+        Raises:
+            ValidationError: If validation fails.
+        """
+        # Handle None responses (e.g., DELETE with 204)
+        if model is type(None) or response.status_code == 204:
+            return None
+
+        try:
+            # Parse JSON response
+            data = response.json()
+
+            # Check if the model is a generic type (e.g., list[User])
+            origin = get_origin(model)
+
+            # Handle list of models
+            if origin is list:
+                # Extract item type from list[T]
+                item_type = get_args(model)[0] if get_args(model) else dict
+                if isinstance(item_type, type) and issubclass(item_type, BaseModel):
+                    return [item_type(**item) for item in data]
+                return data
+
+            # Handle single Pydantic model
+            if isinstance(model, type) and issubclass(model, BaseModel):
+                return model(**data)
+
+            # Return raw data for dict or other types
+            return data
+
+        except PydanticValidationError as e:
+            raise ValidationError(
+                "Response validation failed",
+                response,
+                e.errors(),  # type: ignore[arg-type]
+                raw_data=data,
+            ) from e
+        except Exception as e:
+            raise RequestError(
+                f"Failed to parse response: {e}", original_exception=e
+            ) from e
+
+    def __enter__(self) -> BaseClient:
+        """Support context manager protocol."""
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        """Close client when exiting context."""
+        self.close()
+
+    def close(self) -> None:
+        """Close the underlying httpx client."""
+        self._httpx_client.close()
