@@ -19,7 +19,7 @@ class DataResponse(Generic[T]):
         response: The raw httpx.Response object.
 
     Example:
-        >>> response = client.get("/users/1", response_model=User)
+        >>> response = client.users.get(id=1)
         >>> user = response.data  # Type: User (validated)
         >>> status = response.status_code  # 200
         >>> headers = response.headers  # httpx.Headers
@@ -38,8 +38,42 @@ class DataResponse(Generic[T]):
 
     @property
     def data(self) -> T:
-        """Get the validated and parsed response data."""
+        """Get the validated and parsed response data (Pydantic model)."""
         return self._data
+
+    def data_dump(self) -> dict[str, Any] | list[dict[str, Any]] | None:
+        """
+        Get the validated data as a dictionary.
+
+        Uses Pydantic's model_dump() to serialize the model to a dict.
+        Returns None if data is None (e.g., DELETE responses).
+        """
+        if self._data is None:
+            return None
+        if hasattr(self._data, "model_dump"):
+            return self._data.model_dump()  # type: ignore[no-any-return]
+        # Handle list of models
+        if isinstance(self._data, list):
+            return [
+                item.model_dump() if hasattr(item, "model_dump") else item
+                for item in self._data
+            ]
+        # Handle dict or other types
+        return self._data  # type: ignore[return-value]
+
+    @property
+    def text(self) -> str:
+        """Get the raw response text (delegates to httpx.Response)."""
+        return self._response.text
+
+    @property
+    def content(self) -> bytes:
+        """Get the raw response content as bytes (delegates to httpx.Response)."""
+        return self._response.content
+
+    def json(self) -> Any:
+        """Parse response as JSON (delegates to httpx.Response)."""
+        return self._response.json()
 
     @property
     def response(self) -> httpx.Response:
@@ -82,10 +116,7 @@ class DataResponse(Generic[T]):
         return self._response.is_server_error
 
     def __repr__(self) -> str:
-        cls_name = self.__class__.__name__
-        status_code = self.status_code
-        data = self.data
-        return f"{cls_name}({status_code=}, {data=})"
+        return f"{self.__class__.__name__}({self.status_code=}, {self.data=})"
 
     def __str__(self) -> str:
         return f"<{self.__class__.__name__} [{self.status_code}]>"

@@ -110,7 +110,9 @@ class RequestError(Exception):
     """
 
     def __init__(
-        self, message: str, original_exception: Exception | None = None
+        self,
+        message: str,
+        original_exception: Exception | None = None,
     ) -> None:
         super().__init__(message)
         self.message = message

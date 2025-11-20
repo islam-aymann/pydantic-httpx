@@ -193,3 +193,74 @@ class TestDataResponse:
 
         assert data_response.data is None
         assert data_response.status_code == codes.NO_CONTENT
+
+    def test_data_dump_with_pydantic_model(self) -> None:
+        """Test data_dump method with Pydantic model."""
+        response = httpx.Response(codes.OK)
+        user = User(id=1, name="John", email="john@example.com")
+        data_response = DataResponse(response, user)
+
+        data_dump = data_response.data_dump()
+        assert isinstance(data_dump, dict)
+        assert data_dump == {"id": 1, "name": "John", "email": "john@example.com"}
+
+    def test_data_dump_with_list_of_models(self) -> None:
+        """Test data_dump method with list of Pydantic models."""
+        response = httpx.Response(codes.OK)
+        users = [
+            User(id=1, name="John", email="john@example.com"),
+            User(id=2, name="Jane", email="jane@example.com"),
+        ]
+        data_response = DataResponse(response, users)
+
+        data_dump = data_response.data_dump()
+        assert isinstance(data_dump, list)
+        assert len(data_dump) == 2
+        assert data_dump == [
+            {"id": 1, "name": "John", "email": "john@example.com"},
+            {"id": 2, "name": "Jane", "email": "jane@example.com"},
+        ]
+
+    def test_data_dump_with_none(self) -> None:
+        """Test data_dump method with None data (e.g., DELETE responses)."""
+        response = httpx.Response(codes.NO_CONTENT)
+        data_response = DataResponse(response, None)
+
+        assert data_response.data_dump() is None
+
+    def test_data_dump_with_dict(self) -> None:
+        """Test data_dump method with dict data (non-Pydantic)."""
+        response = httpx.Response(codes.OK)
+        data = {"status": "ok", "count": 42}
+        data_response = DataResponse(response, data)
+
+        data_dump = data_response.data_dump()
+        assert data_dump == {"status": "ok", "count": 42}
+
+    def test_text_property(self) -> None:
+        """Test text property delegates to httpx.Response."""
+        response = httpx.Response(codes.OK, text="Hello, World!")
+        user = User(id=1, name="John", email="john@example.com")
+        data_response = DataResponse(response, user)
+
+        assert data_response.text == "Hello, World!"
+        assert data_response.text == response.text
+
+    def test_content_property(self) -> None:
+        """Test content property delegates to httpx.Response."""
+        response = httpx.Response(codes.OK, content=b"Binary content")
+        user = User(id=1, name="John", email="john@example.com")
+        data_response = DataResponse(response, user)
+
+        assert data_response.content == b"Binary content"
+        assert data_response.content == response.content
+
+    def test_json_method(self) -> None:
+        """Test json() method delegates to httpx.Response."""
+        json_data = {"id": 1, "name": "John", "email": "john@example.com"}
+        response = httpx.Response(codes.OK, json=json_data)
+        user = User(id=1, name="John", email="john@example.com")
+        data_response = DataResponse(response, user)
+
+        assert data_response.json() == json_data
+        assert data_response.json() == response.json()
