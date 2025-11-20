@@ -82,10 +82,11 @@ class DataResponse(Generic[T]):
         return self._response.is_server_error
 
     def __repr__(self) -> str:
-        return f"DataResponse(status_code={self.status_code}, data={self.data!r})"
+        cls_name = self.__class__.__name__
+        return f"{cls_name}(status_code={self.status_code}, data={self.data!r})"
 
     def __str__(self) -> str:
-        return f"<DataResponse [{self.status_code}]>"
+        return f"<{self.__class__.__name__} [{self.status_code}]>"
 
     # Convenience: Allow direct attribute access to data
     def __getattr__(self, name: str) -> Any:
