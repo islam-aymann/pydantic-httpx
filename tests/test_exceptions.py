@@ -43,6 +43,16 @@ class TestResponseError:
         assert ResponseError("", response_599).is_server_error is True
         assert ResponseError("", response_404).is_server_error is False
 
+    def test_is_error(self) -> None:
+        """Test is_error property for 4xx and 5xx status codes."""
+        response_200 = httpx.Response(codes.OK)
+        response_400 = httpx.Response(codes.BAD_REQUEST)
+        response_500 = httpx.Response(codes.INTERNAL_SERVER_ERROR)
+
+        assert ResponseError("", response_200).is_error is False
+        assert ResponseError("", response_400).is_error is True
+        assert ResponseError("", response_500).is_error is True
+
 
 class TestHTTPError:
     """Tests for HTTPError."""

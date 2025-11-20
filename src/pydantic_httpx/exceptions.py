@@ -3,7 +3,6 @@
 from typing import Any
 
 import httpx
-from httpx import codes
 
 
 class ResponseError(Exception):
@@ -28,12 +27,17 @@ class ResponseError(Exception):
     @property
     def is_client_error(self) -> bool:
         """Check if this is a 4xx client error."""
-        return codes.BAD_REQUEST <= self.status_code < codes.INTERNAL_SERVER_ERROR
+        return self.response.is_client_error
 
     @property
     def is_server_error(self) -> bool:
         """Check if this is a 5xx server error."""
-        return codes.INTERNAL_SERVER_ERROR <= self.status_code < 600
+        return self.response.is_server_error
+
+    @property
+    def is_error(self) -> bool:
+        """Check if this is an error (4xx or 5xx)."""
+        return self.response.is_error
 
     def __str__(self) -> str:
         return f"{self.message} (status: {self.status_code})"
