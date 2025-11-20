@@ -6,8 +6,8 @@ from pydantic_httpx.config import ClientConfig, ResourceConfig
 from pydantic_httpx.exceptions import (
     HTTPError,
     RequestError,
+    RequestTimeoutError,
     ResponseError,
-    TimeoutError,
     ValidationError,
 )
 from pydantic_httpx.response import DataResponse
@@ -21,7 +21,7 @@ __all__ = [
     "ResponseError",
     "HTTPError",
     "ValidationError",
-    "TimeoutError",
+    "RequestTimeoutError",
     "RequestError",
     # Response
     "DataResponse",

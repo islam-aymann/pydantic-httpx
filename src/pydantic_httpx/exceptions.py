@@ -83,11 +83,12 @@ class ValidationError(ResponseError):
         return f"{self.message} ({error_count} validation error(s))"
 
 
-class TimeoutError(ResponseError):
+class RequestTimeoutError(ResponseError):
     """
     Raised when a request times out.
 
     Note: This wraps httpx.TimeoutException for consistency.
+    Named RequestTimeoutError to avoid shadowing built-in TimeoutError.
     """
 
     def __init__(self, message: str, timeout: float) -> None:
