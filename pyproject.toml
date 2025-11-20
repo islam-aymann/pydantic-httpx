@@ -34,9 +34,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/islam-ayman/pydantic-httpx"
-Repository = "https://github.com/islam-ayman/pydantic-httpx"
-Issues = "https://github.com/islam-ayman/pydantic-httpx/issues"
+Homepage = "https://github.com/islam-aymann/pydantic-httpx"
+Repository = "https://github.com/islam-aymann/pydantic-httpx"
+Issues = "https://github.com/islam-aymann/pydantic-httpx/issues"
 
 [build-system]
 requires = ["uv_build>=0.8.11,<0.9.0"]
