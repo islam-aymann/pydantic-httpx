@@ -13,7 +13,7 @@ A type-safe HTTP client library that combines the power of HTTPX with Pydantic v
 - Clean, declarative API definitions
 - All HTTPX features (auth, cookies, timeouts, etc.)
 
-**Status**: Production-ready for synchronous HTTP clients. Async support coming in Phase 3.
+**Status**: Production-ready for both synchronous and asynchronous HTTP clients.
 
 ## Features
 
@@ -24,7 +24,7 @@ A type-safe HTTP client library that combines the power of HTTPX with Pydantic v
 - ✅ **Rich Error Handling**: Detailed exceptions with response context
 - ✅ **Full HTTPX Integration**: Query params, headers, cookies, auth, timeouts, redirects
 - ✅ **URL Encoding**: Automatic encoding of special characters in path parameters
-- 🚧 **Sync & Async**: Sync support complete, async coming in Phase 3
+- ✅ **Sync & Async**: Full support for both sync and async HTTP clients with the same resource definitions
 
 ## Quick Example
 
@@ -63,6 +63,26 @@ class APIClient(BaseClient):
 client = APIClient()
 user = client.users.get(id=1)
 print(user.data.name)  # Type-safe access!
+```
+
+### Async Support
+
+The same resource definitions work with async clients:
+
+```python
+from pydantic_httpx import AsyncBaseClient
+
+# Define your async client (same resource definitions!)
+class AsyncAPIClient(AsyncBaseClient):
+    client_config = ClientConfig(base_url="https://api.example.com")
+
+    users: UserResource  # Same resource as sync!
+
+# Use it with async/await!
+async def main():
+    async with AsyncAPIClient() as client:
+        user = await client.users.get(id=1)
+        print(user.data.name)  # Type-safe async access!
 ```
 
 ### Advanced Features
@@ -134,11 +154,20 @@ pip install pydantic-httpx
 - [x] Assignment-based API (following modern Python conventions)
 - [x] Comprehensive test suite (99 tests, 96% coverage)
 
-### 📋 Phase 3: Advanced Features (Planned)
-- [ ] Async support (`AsyncBaseClient`, `AsyncBaseResource`)
+### ✅ Phase 3: Async Support (Complete)
+- [x] `AsyncBaseClient` wrapping `httpx.AsyncClient`
+- [x] Runtime detection in descriptor to return sync or async methods
+- [x] Single resource definition works with both sync and async clients
+- [x] Async context manager support (`async with`)
+- [x] Comprehensive async test suite (8 async tests)
+- [x] Full test coverage (107 tests, 93% coverage)
+
+### 📋 Phase 4: Advanced Features (Planned)
 - [ ] File uploads and multipart forms
 - [ ] Union response types for status codes
 - [ ] Middleware/hooks system
+- [ ] Retry logic with exponential backoff
+- [ ] Request/response logging and debugging
 
 ## Development
 

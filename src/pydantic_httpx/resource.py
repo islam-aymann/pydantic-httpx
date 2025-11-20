@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from pydantic_httpx.config import ResourceConfig
@@ -10,6 +9,7 @@ from pydantic_httpx.endpoint import BaseEndpoint
 from pydantic_httpx.response import DataResponse
 
 if TYPE_CHECKING:
+    from pydantic_httpx.async_client import AsyncBaseClient
     from pydantic_httpx.client import BaseClient
 
 T = TypeVar("T")
@@ -35,15 +35,18 @@ class EndpointDescriptor:
         self.name = name
         self.endpoint = endpoint
         self.response_type = response_type
-        self._client: BaseClient | None = None
 
     def __set_name__(self, owner: type, name: str) -> None:
         """Called when the descriptor is assigned to a class attribute."""
         self.name = name
 
-    def __get__(self, instance: BaseResource | None, owner: type) -> Callable[..., Any]:
+    def __get__(
+        self, instance: BaseResource | None, owner: type
+    ) -> Any:
         """
         Return a callable that executes the HTTP request.
+
+        Returns either a sync or async function based on the client type.
 
         Args:
             instance: The resource instance (or None if accessed from class).
@@ -51,42 +54,85 @@ class EndpointDescriptor:
 
         Returns:
             A callable that executes the endpoint when called.
+            Returns sync function for BaseClient, async function for AsyncBaseClient.
         """
         if instance is None:
             # Accessed from class, return descriptor itself
-            return self  # type: ignore[return-value]
+            return self
 
-        # Return bound method that will execute the request
-        def endpoint_method(**kwargs: Any) -> DataResponse[Any]:
-            if instance._client is None:
-                raise RuntimeError(
-                    f"Resource '{owner.__name__}' is not bound to a client. "
-                    f"Make sure the resource is properly initialized on a client."
+        # Check client type using the _is_async_client flag
+        if instance._client and getattr(instance._client, "_is_async_client", False):
+            # Return async method for async clients
+            async def async_endpoint_method(**kwargs: Any) -> DataResponse[Any]:
+                if instance._client is None:
+                    raise RuntimeError(
+                        f"Resource '{owner.__name__}' is not bound to a client. "
+                        f"Make sure the resource is properly initialized on a client."
+                    )
+
+                # Get the full path (prefix + endpoint path)
+                prefix = instance.resource_config.prefix
+
+                # Format path with parameters
+                path_params = {
+                    k: v
+                    for k, v in kwargs.items()
+                    if k in self.endpoint.get_path_params()
+                }
+                formatted_path = self.endpoint.format_path(**path_params)
+                full_path = f"{prefix}{formatted_path}".rstrip("/") or "/"
+
+                # Remaining kwargs are query/body params (handled by client)
+                non_path_params = {
+                    k: v for k, v in kwargs.items() if k not in path_params
+                }
+
+                # Execute async request via client
+                return await instance._client._execute_request(  # type: ignore[union-attr]
+                    method=self.endpoint.method,
+                    path=full_path,
+                    response_type=self.response_type,
+                    endpoint=self.endpoint,
+                    **non_path_params,
                 )
 
-            # Get the full path (prefix + endpoint path)
-            prefix = instance.resource_config.prefix
+            return async_endpoint_method
+        else:
+            # Return sync method for sync clients
+            def sync_endpoint_method(**kwargs: Any) -> DataResponse[Any]:
+                if instance._client is None:
+                    raise RuntimeError(
+                        f"Resource '{owner.__name__}' is not bound to a client. "
+                        f"Make sure the resource is properly initialized on a client."
+                    )
 
-            # Format path with parameters
-            path_params = {
-                k: v for k, v in kwargs.items() if k in self.endpoint.get_path_params()
-            }
-            formatted_path = self.endpoint.format_path(**path_params)
-            full_path = f"{prefix}{formatted_path}".rstrip("/") or "/"
+                # Get the full path (prefix + endpoint path)
+                prefix = instance.resource_config.prefix
 
-            # Remaining kwargs are query/body params (handled by client)
-            non_path_params = {k: v for k, v in kwargs.items() if k not in path_params}
+                # Format path with parameters
+                path_params = {
+                    k: v
+                    for k, v in kwargs.items()
+                    if k in self.endpoint.get_path_params()
+                }
+                formatted_path = self.endpoint.format_path(**path_params)
+                full_path = f"{prefix}{formatted_path}".rstrip("/") or "/"
 
-            # Execute request via client
-            return instance._client._execute_request(
-                method=self.endpoint.method,
-                path=full_path,
-                response_type=self.response_type,
-                endpoint=self.endpoint,
-                **non_path_params,
-            )
+                # Remaining kwargs are query/body params (handled by client)
+                non_path_params = {
+                    k: v for k, v in kwargs.items() if k not in path_params
+                }
 
-        return endpoint_method
+                # Execute sync request via client
+                return instance._client._execute_request(  # type: ignore[return-value]
+                    method=self.endpoint.method,
+                    path=full_path,
+                    response_type=self.response_type,
+                    endpoint=self.endpoint,
+                    **non_path_params,
+                )
+
+            return sync_endpoint_method
 
 
 class BaseResource:
@@ -119,12 +165,12 @@ class BaseResource:
 
     resource_config: ResourceConfig = ResourceConfig()
 
-    def __init__(self, client: BaseClient | None = None) -> None:
+    def __init__(self, client: BaseClient | AsyncBaseClient | None = None) -> None:
         """
         Initialize the resource.
 
         Args:
-            client: The client instance this resource is bound to.
+            client: The client instance this resource is bound to (sync or async).
         """
         self._client = client
 

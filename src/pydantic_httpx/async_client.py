@@ -1,4 +1,4 @@
-"""Base HTTP client with Pydantic validation."""
+"""Async HTTP client with Pydantic validation."""
 
 from __future__ import annotations
 
@@ -18,21 +18,21 @@ from pydantic_httpx.types import HTTPMethod
 T = TypeVar("T")
 
 
-class BaseClient:
+class AsyncBaseClient:
     """
-    Base HTTP client that integrates httpx with Pydantic models.
+    Async HTTP client that integrates httpx with Pydantic models.
 
-    This client wraps httpx.Client and provides automatic request/response
+    This client wraps httpx.AsyncClient and provides automatic request/response
     validation using Pydantic models defined in resource classes.
 
     Attributes:
         client_config: Configuration for the HTTP client.
-        _is_async_client: Class-level flag indicating this is a sync client.
+        _is_async_client: Class-level flag indicating this is an async client.
 
     Example:
         >>> from pydantic import BaseModel
         >>> from pydantic_httpx import (
-        >>>     BaseClient, BaseResource, ClientConfig, GET, DataResponse
+        >>>     AsyncBaseClient, BaseResource, ClientConfig, GET, DataResponse
         >>> )
         >>>
         >>> class User(BaseModel):
@@ -43,22 +43,22 @@ class BaseClient:
         >>>     resource_config = ResourceConfig(prefix="/users")
         >>>     get: DataResponse[User] = GET("/{id}")
         >>>
-        >>> class APIClient(BaseClient):
+        >>> class AsyncAPIClient(AsyncBaseClient):
         >>>     client_config = ClientConfig(base_url="https://api.example.com")
         >>>     users: UserResource
         >>>
-        >>> client = APIClient()
-        >>> response = client.users.get(id=1)
-        >>> user = response.data  # Type: User
+        >>> async with AsyncAPIClient() as client:
+        >>>     response = await client.users.get(id=1)
+        >>>     user = response.data  # Type: User
     """
 
     client_config: ClientConfig = ClientConfig()
-    _is_async_client: bool = False
+    _is_async_client: bool = True
 
     def __init__(self) -> None:
         """Initialize the client and bind resources."""
-        # Create httpx client
-        self._httpx_client = httpx.Client(
+        # Create async httpx client
+        self._httpx_client = httpx.AsyncClient(
             base_url=self.client_config.base_url,
             timeout=self.client_config.timeout,
             headers=self.client_config.headers,
@@ -92,7 +92,7 @@ class BaseClient:
             resource_instance = resource_class(client=self)
             setattr(self, attr_name, resource_instance)
 
-    def _execute_request(
+    async def _execute_request(
         self,
         method: HTTPMethod | str,
         path: str,
@@ -101,7 +101,7 @@ class BaseClient:
         **kwargs: Any,
     ) -> DataResponse[Any]:
         """
-        Execute an HTTP request and validate the response.
+        Execute an async HTTP request and validate the response.
 
         Args:
             method: HTTP method (GET, POST, etc.).
@@ -161,9 +161,11 @@ class BaseClient:
                 # Pass remaining kwargs as query params
                 request_params["params"] = query_kwargs
 
-            # Execute HTTP request (convert enum to string if needed)
+            # Execute async HTTP request (convert enum to string if needed)
             method_str = method.value if isinstance(method, HTTPMethod) else method
-            response = self._httpx_client.request(method_str, path, **request_params)
+            response = await self._httpx_client.request(
+                method_str, path, **request_params
+            )
 
             # Check for HTTP errors if configured
             if self.client_config.raise_on_error and response.is_error:
@@ -243,17 +245,18 @@ class BaseClient:
             ) from e
         except Exception as e:
             raise RequestError(
-                f"Failed to parse response: {e}", original_exception=e
+                f"Failed to parse response: {e}",
+                original_exception=e,
             ) from e
 
-    def __enter__(self) -> BaseClient:
-        """Support context manager protocol."""
+    async def __aenter__(self) -> AsyncBaseClient:
+        """Support async context manager protocol."""
         return self
 
-    def __exit__(self, *args: Any) -> None:
-        """Close client when exiting context."""
-        self.close()
+    async def __aexit__(self, *args: Any) -> None:
+        """Close client when exiting async context."""
+        await self.close()
 
-    def close(self) -> None:
-        """Close the underlying httpx client."""
-        self._httpx_client.close()
+    async def close(self) -> None:
+        """Close the underlying async httpx client."""
+        await self._httpx_client.aclose()
