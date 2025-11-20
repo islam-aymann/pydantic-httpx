@@ -2,6 +2,7 @@
 
 __version__ = "0.1.0"
 
+from pydantic_httpx.async_client import AsyncBaseClient
 from pydantic_httpx.client import BaseClient
 from pydantic_httpx.config import ClientConfig, ResourceConfig
 from pydantic_httpx.endpoint import (
@@ -41,6 +42,7 @@ __all__ = [
     "DataResponse",
     # Client & Resources
     "BaseClient",
+    "AsyncBaseClient",
     "BaseResource",
     # Endpoints
     "BaseEndpoint",
