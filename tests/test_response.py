@@ -2,6 +2,7 @@
 
 import httpx
 import pytest
+from httpx import codes
 from pydantic import BaseModel
 
 from pydantic_httpx import DataResponse
@@ -21,18 +22,18 @@ class TestDataResponse:
     def test_basic_data_response(self) -> None:
         """Test basic DataResponse creation."""
         response = httpx.Response(
-            200, json={"id": 1, "name": "John", "email": "john@example.com"}
+            codes.OK, json={"id": 1, "name": "John", "email": "john@example.com"}
         )
         user = User(id=1, name="John", email="john@example.com")
         data_response = DataResponse(response, user)
 
         assert data_response.data == user
         assert data_response.response is response
-        assert data_response.status_code == 200
+        assert data_response.status_code == codes.OK
 
     def test_data_property(self) -> None:
         """Test accessing data property."""
-        response = httpx.Response(200)
+        response = httpx.Response(codes.OK)
         user = User(id=1, name="John", email="john@example.com")
         data_response = DataResponse(response, user)
 
@@ -42,7 +43,7 @@ class TestDataResponse:
 
     def test_response_property(self) -> None:
         """Test accessing raw response."""
-        response = httpx.Response(200, headers={"X-Custom": "value"})
+        response = httpx.Response(codes.OK, headers={"X-Custom": "value"})
         user = User(id=1, name="John", email="john@example.com")
         data_response = DataResponse(response, user)
 
@@ -51,15 +52,17 @@ class TestDataResponse:
 
     def test_status_code_property(self) -> None:
         """Test status_code convenience property."""
-        response = httpx.Response(201)
+        response = httpx.Response(codes.CREATED)
         user = User(id=1, name="John", email="john@example.com")
         data_response = DataResponse(response, user)
 
-        assert data_response.status_code == 201
+        assert data_response.status_code == codes.CREATED
 
     def test_headers_property(self) -> None:
         """Test headers convenience property."""
-        response = httpx.Response(200, headers={"Content-Type": "application/json"})
+        response = httpx.Response(
+            codes.OK, headers={"Content-Type": "application/json"}
+        )
         user = User(id=1, name="John", email="john@example.com")
         data_response = DataResponse(response, user)
 
@@ -69,7 +72,7 @@ class TestDataResponse:
     def test_url_property(self) -> None:
         """Test url convenience property."""
         response = httpx.Response(
-            200, request=httpx.Request("GET", "https://api.example.com/users/1")
+            codes.OK, request=httpx.Request("GET", "https://api.example.com/users/1")
         )
         user = User(id=1, name="John", email="john@example.com")
         data_response = DataResponse(response, user)
@@ -78,9 +81,9 @@ class TestDataResponse:
 
     def test_is_success_property(self) -> None:
         """Test is_success property for 2xx status codes."""
-        response_200 = httpx.Response(200)
-        response_201 = httpx.Response(201)
-        response_400 = httpx.Response(400)
+        response_200 = httpx.Response(codes.OK)
+        response_201 = httpx.Response(codes.CREATED)
+        response_400 = httpx.Response(codes.BAD_REQUEST)
 
         user = User(id=1, name="John", email="john@example.com")
 
@@ -90,9 +93,9 @@ class TestDataResponse:
 
     def test_is_error_property(self) -> None:
         """Test is_error property for 4xx/5xx status codes."""
-        response_200 = httpx.Response(200)
-        response_400 = httpx.Response(400)
-        response_500 = httpx.Response(500)
+        response_200 = httpx.Response(codes.OK)
+        response_400 = httpx.Response(codes.BAD_REQUEST)
+        response_500 = httpx.Response(codes.INTERNAL_SERVER_ERROR)
 
         user = User(id=1, name="John", email="john@example.com")
 
@@ -102,8 +105,8 @@ class TestDataResponse:
 
     def test_is_client_error_property(self) -> None:
         """Test is_client_error property for 4xx status codes."""
-        response_404 = httpx.Response(404)
-        response_500 = httpx.Response(500)
+        response_404 = httpx.Response(codes.NOT_FOUND)
+        response_500 = httpx.Response(codes.INTERNAL_SERVER_ERROR)
 
         user = User(id=1, name="John", email="john@example.com")
 
@@ -112,8 +115,8 @@ class TestDataResponse:
 
     def test_is_server_error_property(self) -> None:
         """Test is_server_error property for 5xx status codes."""
-        response_404 = httpx.Response(404)
-        response_500 = httpx.Response(500)
+        response_404 = httpx.Response(codes.NOT_FOUND)
+        response_500 = httpx.Response(codes.INTERNAL_SERVER_ERROR)
 
         user = User(id=1, name="John", email="john@example.com")
 
@@ -122,7 +125,7 @@ class TestDataResponse:
 
     def test_repr(self) -> None:
         """Test __repr__ method."""
-        response = httpx.Response(200)
+        response = httpx.Response(codes.OK)
         user = User(id=1, name="John", email="john@example.com")
         data_response = DataResponse(response, user)
 
@@ -132,7 +135,7 @@ class TestDataResponse:
 
     def test_str(self) -> None:
         """Test __str__ method."""
-        response = httpx.Response(201)
+        response = httpx.Response(codes.CREATED)
         user = User(id=1, name="John", email="john@example.com")
         data_response = DataResponse(response, user)
 
@@ -142,7 +145,7 @@ class TestDataResponse:
 
     def test_direct_attribute_access(self) -> None:
         """Test direct attribute access to data (convenience)."""
-        response = httpx.Response(200)
+        response = httpx.Response(codes.OK)
         user = User(id=1, name="John", email="john@example.com")
         data_response = DataResponse(response, user)
 
@@ -153,7 +156,7 @@ class TestDataResponse:
 
     def test_attribute_error_on_missing_attribute(self) -> None:
         """Test that accessing non-existent attributes raises AttributeError."""
-        response = httpx.Response(200)
+        response = httpx.Response(codes.OK)
         user = User(id=1, name="John", email="john@example.com")
         data_response = DataResponse(response, user)
 
@@ -162,7 +165,7 @@ class TestDataResponse:
 
     def test_with_list_data(self) -> None:
         """Test DataResponse with list of models."""
-        response = httpx.Response(200)
+        response = httpx.Response(codes.OK)
         users = [
             User(id=1, name="John", email="john@example.com"),
             User(id=2, name="Jane", email="jane@example.com"),
@@ -175,7 +178,7 @@ class TestDataResponse:
 
     def test_with_dict_data(self) -> None:
         """Test DataResponse with dict data."""
-        response = httpx.Response(200)
+        response = httpx.Response(codes.OK)
         data = {"status": "ok", "count": 42}
         data_response = DataResponse(response, data)
 
@@ -185,8 +188,8 @@ class TestDataResponse:
 
     def test_with_none_data(self) -> None:
         """Test DataResponse with None data (e.g., DELETE responses)."""
-        response = httpx.Response(204)
+        response = httpx.Response(codes.NO_CONTENT)
         data_response = DataResponse(response, None)
 
         assert data_response.data is None
-        assert data_response.status_code == 204
+        assert data_response.status_code == codes.NO_CONTENT

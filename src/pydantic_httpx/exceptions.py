@@ -3,6 +3,7 @@
 from typing import Any
 
 import httpx
+from httpx import codes
 
 
 class ResponseError(Exception):
@@ -27,12 +28,12 @@ class ResponseError(Exception):
     @property
     def is_client_error(self) -> bool:
         """Check if this is a 4xx client error."""
-        return 400 <= self.status_code < 500
+        return codes.BAD_REQUEST <= self.status_code < codes.INTERNAL_SERVER_ERROR
 
     @property
     def is_server_error(self) -> bool:
         """Check if this is a 5xx server error."""
-        return 500 <= self.status_code < 600
+        return codes.INTERNAL_SERVER_ERROR <= self.status_code < 600
 
     def __str__(self) -> str:
         return f"{self.message} (status: {self.status_code})"
@@ -43,7 +44,7 @@ class HTTPError(ResponseError):
     Raised when the HTTP status code indicates an error (4xx or 5xx).
 
     This is raised when raise_on_error=True in config and the response
-    status code is >= 400.
+    status code is >= BAD_REQUEST (400).
     """
 
     def __init__(self, response: httpx.Response) -> None:
