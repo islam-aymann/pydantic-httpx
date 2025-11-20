@@ -262,6 +262,7 @@ class TestRedirects:
 
     def test_follow_redirects_false(self, httpx_mock: HTTPXMock) -> None:
         """Test that follow_redirects=False prevents following redirects."""
+
         # Create an endpoint that returns dict so we don't need to validate
         class RedirectResource(BaseResource):
             resource_config = ResourceConfig(prefix="/api")

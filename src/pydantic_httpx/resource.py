@@ -40,9 +40,7 @@ class EndpointDescriptor:
         """Called when the descriptor is assigned to a class attribute."""
         self.name = name
 
-    def __get__(
-        self, instance: BaseResource | None, owner: type
-    ) -> Any:
+    def __get__(self, instance: BaseResource | None, owner: type) -> Any:
         """
         Return a callable that executes the HTTP request.
 
