@@ -1,8 +1,14 @@
 # pydantic-httpx
 
+[![CI](https://github.com/islam-aymann/pydantic-httpx/workflows/CI/badge.svg)](https://github.com/islam-aymann/pydantic-httpx/actions)
+[![codecov](https://codecov.io/gh/islam-aymann/pydantic-httpx/branch/main/graph/badge.svg)](https://codecov.io/gh/islam-aymann/pydantic-httpx)
+[![Python Versions](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/islam-aymann/pydantic-httpx)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A type-safe HTTP client library that combines the power of HTTPX with Pydantic validation. Build declarative, resource-based API clients with automatic request/response validation, full IDE support, and clean Python syntax.
 
-**Status**: 🚧 Under active development - Phase 2 (Core Logic) complete
+**Status**: 🚧 Alpha - Not yet published to PyPI. Use via GitHub installation.
 
 ## What It Does
 
@@ -122,11 +128,40 @@ results = client.users.search(status="active", limit=5)
 
 ## Installation
 
+**Note**: This package is not yet published to PyPI. Install directly from GitHub:
+
+### Using pip
+
 ```bash
-pip install pydantic-httpx
+pip install git+https://github.com/islam-aymann/pydantic-httpx.git
 ```
 
-**Note**: Package not yet published to PyPI. Currently in development.
+### Using uv (recommended)
+
+```bash
+uv add git+https://github.com/islam-aymann/pydantic-httpx.git
+```
+
+### Using Poetry
+
+```bash
+poetry add git+https://github.com/islam-aymann/pydantic-httpx.git
+```
+
+### In pyproject.toml
+
+```toml
+[project]
+dependencies = [
+    "pydantic-httpx @ git+https://github.com/islam-aymann/pydantic-httpx.git",
+]
+```
+
+### Requirements
+
+- Python 3.10+
+- httpx >= 0.27.0
+- pydantic >= 2.0.0
 
 ## Development Progress
 
