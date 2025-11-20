@@ -1,13 +1,25 @@
 """Type definitions and protocols for pydantic-httpx."""
 
-from typing import Any, Literal, TypeAlias
+from enum import Enum
+from typing import Any, TypeAlias
 
 from pydantic import BaseModel
 
-# HTTP Methods
-HTTPMethod: TypeAlias = Literal[
-    "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"
-]
+
+class HTTPMethod(str, Enum):
+    """HTTP method enumeration."""
+
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+    PATCH = "PATCH"
+    DELETE = "DELETE"
+    HEAD = "HEAD"
+    OPTIONS = "OPTIONS"
+
+
+# Valid HTTP methods as a set (for validation)
+VALID_HTTP_METHODS: set[str] = {method.value for method in HTTPMethod}
 
 # Request/Response Models
 RequestModel: TypeAlias = type[BaseModel] | None

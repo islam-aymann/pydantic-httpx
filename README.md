@@ -2,23 +2,25 @@
 
 Integration library for HTTPX with Pydantic models for type-safe HTTP client requests and responses.
 
-**Status**: 🚧 Under active development - Phase 1 (Foundation) complete
+**Status**: 🚧 Under active development - Phase 2 (Core Logic) complete
 
 ## Features
 
-- ✅ **Type-Safe**: Full type hints with `Annotated` for IDE autocomplete and mypy validation
+- ✅ **Type-Safe**: Full type hints with assignment syntax for IDE autocomplete and mypy validation
 - ✅ **Pydantic Integration**: Automatic request/response validation using Pydantic models
 - ✅ **Explicit API**: Resource-based organization with clear endpoint definitions
 - ✅ **Config-Driven**: Familiar `client_config` and `resource_config` (like Pydantic's `model_config`)
 - 🚧 **Sync & Async**: Support for both sync and async operations (async coming soon)
 - 🚧 **Rich Error Handling**: Detailed exceptions with response context (foundation complete)
 
-## Quick Example (Preview)
+## Quick Example
 
 ```python
-from typing import Annotated
 from pydantic import BaseModel
-from pydantic_httpx import BaseClient, BaseResource, Endpoint, DataResponse, ClientConfig, ResourceConfig
+from pydantic_httpx import (
+    BaseClient, BaseResource, GET, POST, DataResponse,
+    ClientConfig, ResourceConfig
+)
 
 # Define your models
 class User(BaseModel):
@@ -26,13 +28,17 @@ class User(BaseModel):
     name: str
     email: str
 
+class CreateUserRequest(BaseModel):
+    name: str
+    email: str
+
 # Define a resource
 class UserResource(BaseResource):
     resource_config = ResourceConfig(prefix="/users")
 
-    get: Annotated[DataResponse[User], Endpoint("GET", "/{id}")]
-    list: Annotated[DataResponse[list[User]], Endpoint("GET", "")]
-    create: Annotated[DataResponse[User], Endpoint("POST", "", request=CreateUserRequest)]
+    get: DataResponse[User] = GET("/{id}")
+    list_all: DataResponse[list[User]] = GET("")
+    create: DataResponse[User] = POST("", request_model=CreateUserRequest)
 
 # Define your client
 class APIClient(BaseClient):
@@ -63,12 +69,15 @@ pip install pydantic-httpx
 - [x] Type definitions
 - [x] Comprehensive test suite (37 tests, 92% coverage)
 
-### 🚧 Phase 2: Core Logic (In Progress)
-- [ ] Endpoint metadata class
-- [ ] BaseResource implementation
-- [ ] BaseClient implementation
-- [ ] Request/response serialization
-- [ ] Path parameter interpolation
+### ✅ Phase 2: Core Logic (Complete)
+- [x] Endpoint metadata classes (`BaseEndpoint`, `Endpoint`, `GET`, `POST`, etc.)
+- [x] BaseResource implementation with descriptor protocol
+- [x] BaseClient implementation with HTTPX integration
+- [x] Request/response serialization with Pydantic validation
+- [x] Path parameter interpolation
+- [x] HTTPMethod as str, Enum for better type safety
+- [x] Assignment-based API (following modern Python conventions)
+- [x] Comprehensive test suite (88 tests, 95% coverage)
 
 ### 📋 Phase 3: Advanced Features (Planned)
 - [ ] Async support (`AsyncBaseClient`, `AsyncBaseResource`)
