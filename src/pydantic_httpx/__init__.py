@@ -25,7 +25,11 @@ from pydantic_httpx.exceptions import (
 )
 from pydantic_httpx.resource import BaseResource
 from pydantic_httpx.response import DataResponse
-from pydantic_httpx.types import VALID_HTTP_METHODS, HTTPMethod
+from pydantic_httpx.types import (
+    VALID_HTTP_METHODS,
+    EndpointMethod,
+    HTTPMethod,
+)
 
 __all__ = [
     "__version__",
@@ -57,4 +61,5 @@ __all__ = [
     # Types
     "HTTPMethod",
     "VALID_HTTP_METHODS",
+    "EndpointMethod",
 ]

@@ -11,7 +11,7 @@ from pydantic_httpx import (
     BaseClient,
     BaseResource,
     ClientConfig,
-    DataResponse,
+    EndpointMethod,
     ResourceConfig,
 )
 
@@ -37,30 +37,30 @@ class UserResource(BaseResource):
     resource_config = ResourceConfig(prefix="/users")
 
     # Basic endpoints
-    get: DataResponse[User] = GET("/{id}")
-    create: DataResponse[User] = POST("")
+    get: EndpointMethod[User] = GET("/{id}")
+    create: EndpointMethod[User] = POST("")
 
     # Endpoint with query model
-    search: DataResponse[list[User]] = GET("/search", query_model=SearchParams)
+    search: EndpointMethod[list[User]] = GET("/search", query_model=SearchParams)
 
     # Endpoint with custom headers
-    get_with_headers: DataResponse[User] = GET(
+    get_with_headers: EndpointMethod[User] = GET(
         "/{id}", headers={"X-Custom-Header": "test-value"}
     )
 
     # Endpoint with cookies
-    get_with_cookies: DataResponse[User] = GET(
+    get_with_cookies: EndpointMethod[User] = GET(
         "/{id}", cookies={"session_id": "abc123"}
     )
 
     # Endpoint with auth (Basic auth tuple)
-    get_with_auth: DataResponse[User] = GET("/{id}", auth=("username", "password"))
+    get_with_auth: EndpointMethod[User] = GET("/{id}", auth=("username", "password"))
 
     # Endpoint with custom timeout
-    get_with_timeout: DataResponse[User] = GET("/{id}", timeout=30.0)
+    get_with_timeout: EndpointMethod[User] = GET("/{id}", timeout=30.0)
 
     # Endpoint with follow_redirects=False
-    get_no_redirects: DataResponse[User] = GET("/{id}", follow_redirects=False)
+    get_no_redirects: EndpointMethod[User] = GET("/{id}", follow_redirects=False)
 
 
 class APIClient(BaseClient):
@@ -216,7 +216,7 @@ class TestAuthentication:
 
         class CustomAuthResource(BaseResource):
             resource_config = ResourceConfig(prefix="/users")
-            get: DataResponse[User] = GET("/{id}", auth=CustomAuth())
+            get: EndpointMethod[User] = GET("/{id}", auth=CustomAuth())
 
         class CustomAuthClient(BaseClient):
             client_config = ClientConfig(base_url="https://api.example.com")
@@ -266,7 +266,7 @@ class TestRedirects:
         # Create an endpoint that returns dict so we don't need to validate
         class RedirectResource(BaseResource):
             resource_config = ResourceConfig(prefix="/api")
-            get: DataResponse[dict] = GET("/resource", follow_redirects=False)
+            get: EndpointMethod[dict] = GET("/resource", follow_redirects=False)
 
         class RedirectClient(BaseClient):
             client_config = ClientConfig(base_url="https://api.example.com")
@@ -299,7 +299,7 @@ class TestURLEncoding:
 
         class ArticleResource(BaseResource):
             resource_config = ResourceConfig(prefix="/articles")
-            get: DataResponse[dict] = GET("/{title}")
+            get: EndpointMethod[dict] = GET("/{title}")
 
         class ArticleClient(BaseClient):
             client_config = ClientConfig(base_url="https://api.example.com")
@@ -322,7 +322,7 @@ class TestURLEncoding:
 
         class SearchResource(BaseResource):
             resource_config = ResourceConfig(prefix="/search")
-            get: DataResponse[dict] = GET("/{query}")
+            get: EndpointMethod[dict] = GET("/{query}")
 
         class SearchClient(BaseClient):
             client_config = ClientConfig(base_url="https://api.example.com")
