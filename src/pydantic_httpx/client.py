@@ -14,6 +14,7 @@ from pydantic_httpx.exceptions import HTTPError, RequestError, ValidationError
 from pydantic_httpx.resource import BaseResource, EndpointDescriptor
 from pydantic_httpx.response import DataResponse
 from pydantic_httpx.types import HTTPMethod
+from pydantic_httpx.validators import get_validators
 
 T = TypeVar("T")
 
@@ -68,6 +69,9 @@ class Client:
             follow_redirects=self.client_config.follow_redirects,
         )
 
+        # Extract and store validators for this client
+        self._validators = get_validators(self.__class__)
+
         # Initialize and bind resources
         self._init_resources()
 
@@ -104,6 +108,7 @@ class Client:
                         return_data_only = False
 
                 # Create and set the descriptor (same as Resource does)
+                # Note: validators will be retrieved at runtime from client instance
                 descriptor = EndpointDescriptor(
                     attr_name, endpoint, annotation, return_data_only
                 )
