@@ -273,7 +273,10 @@ class TestIntegration:
         assert result[0].name == "Alice"
         assert result[1].name == "Bob"
 
-    def test_response_endpoint_returns_full_response(self, httpx_mock: HTTPXMock) -> None:
+    def test_response_endpoint_returns_full_response(
+        self,
+        httpx_mock: HTTPXMock,
+    ) -> None:
         """Test that ResponseEndpoint[T] returns DataResponse[T]."""
         httpx_mock.add_response(
             url="https://api.example.com/users/1",

@@ -25,9 +25,8 @@ from pydantic_httpx.exceptions import (
 )
 from pydantic_httpx.resource import BaseResource
 from pydantic_httpx.response import DataResponse
-from pydantic_httpx.types import VALID_HTTP_METHODS, HTTPMethod
+from pydantic_httpx.types import VALID_HTTP_METHODS, HTTPMethod, ResponseEndpoint
 from pydantic_httpx.types import Endpoint as EndpointProtocol
-from pydantic_httpx.types import ResponseEndpoint
 from pydantic_httpx.validators import endpoint_validator
 
 __all__ = [

@@ -10,8 +10,8 @@ from pydantic_httpx.endpoint import BaseEndpoint
 from pydantic_httpx.response import DataResponse
 
 if TYPE_CHECKING:
-    from pydantic_httpx.async_client import AsyncBaseClient, AsyncClient
-    from pydantic_httpx.client import BaseClient, Client
+    from pydantic_httpx.async_client import AsyncBaseClient
+    from pydantic_httpx.client import BaseClient
 
 T = TypeVar("T")
 
@@ -76,9 +76,7 @@ class EndpointDescriptor:
         )
 
     @overload
-    def __get__(
-        self, instance: None, owner: type
-    ) -> EndpointDescriptor: ...
+    def __get__(self, instance: None, owner: type) -> EndpointDescriptor: ...
 
     @overload
     def __get__(
