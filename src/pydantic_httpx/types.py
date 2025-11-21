@@ -10,6 +10,7 @@ from pydantic import BaseModel
 if TYPE_CHECKING:
     from pydantic_httpx.response import DataResponse
 
+T_co = TypeVar("T_co", covariant=True)
 T = TypeVar("T")
 
 
@@ -40,7 +41,7 @@ QueryParams: TypeAlias = dict[str, Any]
 PathParams: TypeAlias = dict[str, Any]
 
 
-class Endpoint(Protocol[T]):
+class Endpoint(Protocol[T_co]):
     """
     Protocol for endpoints that return data directly (auto-extracts response.data).
 
@@ -56,7 +57,7 @@ class Endpoint(Protocol[T]):
         >>> print(user.name)  # Direct access to data
     """
 
-    def __call__(self, **kwargs: Any) -> T:
+    def __call__(self, **kwargs: Any) -> T_co:
         """
         Execute the endpoint and return validated data directly.
 

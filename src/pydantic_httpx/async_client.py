@@ -72,7 +72,7 @@ class AsyncClient:
         self._init_resources()
 
     def __init_subclass__(cls) -> None:
-        """Called when a subclass is created to parse resource and endpoint attributes."""
+        """Called when a subclass is created to parse resources and endpoints."""
         super().__init_subclass__()
 
         # Use get_type_hints to properly resolve forward references and generics

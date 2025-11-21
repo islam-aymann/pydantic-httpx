@@ -10,8 +10,8 @@ from pydantic_httpx import (
     AsyncClient,
     BaseResource,
     ClientConfig,
-    ResponseEndpoint,
     ResourceConfig,
+    ResponseEndpoint,
 )
 
 

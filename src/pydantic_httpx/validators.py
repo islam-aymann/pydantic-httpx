@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from pydantic_httpx.response import DataResponse
@@ -112,7 +113,8 @@ def get_validators(cls: type) -> dict[str, list[ValidatorInfo]]:
 
     Example:
         >>> validators = get_validators(APIClient)
-        >>> # {'get_user': [ValidatorInfo(mode='before', ...), ValidatorInfo(mode='after', ...)]}
+        >>> # {'get_user': [ValidatorInfo(mode='before', ...),
+        >>> #               ValidatorInfo(mode='after', ...)]}
     """
     validators: dict[str, list[ValidatorInfo]] = {}
 

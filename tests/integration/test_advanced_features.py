@@ -8,11 +8,11 @@ from pytest_httpx import HTTPXMock
 from pydantic_httpx import (
     GET,
     POST,
-    Client,
     BaseResource,
+    Client,
     ClientConfig,
-    ResponseEndpoint,
     ResourceConfig,
+    ResponseEndpoint,
 )
 
 

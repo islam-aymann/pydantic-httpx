@@ -10,8 +10,8 @@ from pydantic_httpx.endpoint import BaseEndpoint
 from pydantic_httpx.response import DataResponse
 
 if TYPE_CHECKING:
-    from pydantic_httpx.async_client import AsyncBaseClient
-    from pydantic_httpx.client import BaseClient
+    from pydantic_httpx.async_client import AsyncClient
+    from pydantic_httpx.client import Client
 
 T = TypeVar("T")
 
@@ -37,7 +37,7 @@ class EndpointDescriptor:
         Args:
             name: The attribute name of the endpoint.
             endpoint: The BaseEndpoint metadata.
-            response_type: The expected response type (Endpoint[T] or ResponseEndpoint[T]).
+            response_type: Expected response type (Endpoint[T] or ResponseEndpoint[T]).
             return_data_only: If True, return data only (Endpoint[T]).
                 If False, return full DataResponse[T] (ResponseEndpoint[T]).
         """
@@ -126,7 +126,8 @@ class EndpointDescriptor:
             async def async_endpoint_method(**kwargs: Any) -> DataResponse[Any]:
                 if client is None:
                     raise RuntimeError(
-                        f"Endpoint '{self.name}' on '{owner.__name__}' is not bound to a client. "
+                        f"Endpoint '{self.name}' on '{owner.__name__}' "
+                        f"is not bound to a client. "
                         f"Make sure it is properly initialized."
                     )
 
@@ -145,7 +146,7 @@ class EndpointDescriptor:
                 }
 
                 # Execute async request via client
-                response = await client._execute_request(  # type: ignore[union-attr]
+                response = await client._execute_request(
                     method=self.endpoint.method,
                     path=full_path,
                     response_type=self.response_type,
@@ -155,8 +156,8 @@ class EndpointDescriptor:
 
                 # Return data only if Endpoint[T], else return full DataResponse[T]
                 if self.return_data_only:
-                    return response.data
-                return response
+                    return response.data  # type: ignore[no-any-return]
+                return response  # type: ignore[no-any-return]
 
             return async_endpoint_method
         else:
@@ -164,7 +165,8 @@ class EndpointDescriptor:
             def sync_endpoint_method(**kwargs: Any) -> DataResponse[Any]:
                 if client is None:
                     raise RuntimeError(
-                        f"Endpoint '{self.name}' on '{owner.__name__}' is not bound to a client. "
+                        f"Endpoint '{self.name}' on '{owner.__name__}' "
+                        f"is not bound to a client. "
                         f"Make sure it is properly initialized."
                     )
 
@@ -183,7 +185,7 @@ class EndpointDescriptor:
                 }
 
                 # Execute sync request via client
-                response = client._execute_request(  # type: ignore[assignment]
+                response = client._execute_request(
                     method=self.endpoint.method,
                     path=full_path,
                     response_type=self.response_type,
@@ -193,8 +195,8 @@ class EndpointDescriptor:
 
                 # Return data only if Endpoint[T], else return full DataResponse[T]
                 if self.return_data_only:
-                    return response.data
-                return response
+                    return response.data  # type: ignore[no-any-return]
+                return response  # type: ignore[no-any-return]
 
             return sync_endpoint_method
 
@@ -229,7 +231,7 @@ class BaseResource:
 
     resource_config: ResourceConfig = ResourceConfig()
 
-    def __init__(self, client: BaseClient | AsyncBaseClient | None = None) -> None:
+    def __init__(self, client: Client | AsyncClient | None = None) -> None:
         """
         Initialize the resource.
 
