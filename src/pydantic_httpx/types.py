@@ -10,6 +10,7 @@ from pydantic import BaseModel
 if TYPE_CHECKING:
     from pydantic_httpx.response import DataResponse
 
+T_co = TypeVar("T_co", covariant=True)
 T = TypeVar("T")
 
 
@@ -40,35 +41,60 @@ QueryParams: TypeAlias = dict[str, Any]
 PathParams: TypeAlias = dict[str, Any]
 
 
-class CallableEndpoint(Protocol[T]):
+class Endpoint(Protocol[T_co]):
     """
-    Protocol for callable endpoints with proper typing.
+    Protocol for endpoints that return data directly (auto-extracts response.data).
 
-    This protocol enables IDEs to understand that endpoint descriptors
-    are callable and return DataResponse[T].
+    This is the default endpoint type for simple cases where you only need
+    the validated data, not the full HTTP response metadata.
 
     Example:
         >>> class UserResource(BaseResource):
-        >>>     get: EndpointMethod[User] = GET("/{id}")
+        >>>     get: Endpoint[User] = GET("/{id}")
         >>>
-        >>> # IDE understands that client.users.get(id=1) returns DataResponse[User]
-        >>> response = client.users.get(id=1)
+        >>> # Returns User directly (not DataResponse[User])
+        >>> user = client.users.get(id=1)  # Type: User
+        >>> print(user.name)  # Direct access to data
     """
 
-    def __call__(self, **kwargs: Any) -> DataResponse[T]:
+    def __call__(self, **kwargs: Any) -> T_co:
         """
-        Execute the endpoint with the provided parameters.
+        Execute the endpoint and return validated data directly.
 
         Args:
             **kwargs: Path parameters, query parameters, or request body data.
 
         Returns:
-            DataResponse[T]: Response wrapper containing validated data.
+            T: The validated data (response.data is auto-extracted).
         """
         ...
 
 
-# Type alias for endpoint definitions in resources
-# Usage: endpoint: EndpointMethod[User] = GET("/{id}")
-# At runtime: client.users.endpoint(id=1) returns DataResponse[User]
-EndpointMethod: TypeAlias = CallableEndpoint[T]
+class ResponseEndpoint(Protocol[T]):
+    """
+    Protocol for endpoints that return full DataResponse[T] wrapper.
+
+    Use this when you need access to HTTP metadata like status codes,
+    headers, cookies, or response timing information.
+
+    Example:
+        >>> class UserResource(BaseResource):
+        >>>     get: ResponseEndpoint[User] = GET("/{id}")
+        >>>
+        >>> # Returns DataResponse[User] with full metadata
+        >>> response = client.users.get(id=1)  # Type: DataResponse[User]
+        >>> print(f"Status: {response.status_code}")
+        >>> print(f"User: {response.data.name}")
+    """
+
+    def __call__(self, **kwargs: Any) -> DataResponse[T]:
+        """
+        Execute the endpoint and return full response wrapper.
+
+        Args:
+            **kwargs: Path parameters, query parameters, or request body data.
+
+        Returns:
+            DataResponse[T]: Response wrapper with validated data and metadata.
+        """
+        ...

@@ -2,8 +2,8 @@
 
 __version__ = "0.1.0"
 
-from pydantic_httpx.async_client import AsyncBaseClient
-from pydantic_httpx.client import BaseClient
+from pydantic_httpx.async_client import AsyncClient
+from pydantic_httpx.client import Client
 from pydantic_httpx.config import ClientConfig, ResourceConfig
 from pydantic_httpx.endpoint import (
     DELETE,
@@ -14,8 +14,8 @@ from pydantic_httpx.endpoint import (
     POST,
     PUT,
     BaseEndpoint,
-    Endpoint,
 )
+from pydantic_httpx.endpoint import Endpoint as EndpointClass
 from pydantic_httpx.exceptions import (
     HTTPError,
     RequestError,
@@ -25,11 +25,9 @@ from pydantic_httpx.exceptions import (
 )
 from pydantic_httpx.resource import BaseResource
 from pydantic_httpx.response import DataResponse
-from pydantic_httpx.types import (
-    VALID_HTTP_METHODS,
-    EndpointMethod,
-    HTTPMethod,
-)
+from pydantic_httpx.types import VALID_HTTP_METHODS, HTTPMethod, ResponseEndpoint
+from pydantic_httpx.types import Endpoint as EndpointProtocol
+from pydantic_httpx.validators import endpoint_validator
 
 __all__ = [
     "__version__",
@@ -45,12 +43,17 @@ __all__ = [
     # Response
     "DataResponse",
     # Client & Resources
-    "BaseClient",
-    "AsyncBaseClient",
+    "Client",
+    "AsyncClient",
     "BaseResource",
-    # Endpoints
+    # Endpoint Types (Protocol)
+    "Endpoint",  # Protocol for Endpoint[T]
+    "ResponseEndpoint",  # Protocol for ResponseEndpoint[T]
+    # Validators
+    "endpoint_validator",
+    # Endpoint Classes
     "BaseEndpoint",
-    "Endpoint",
+    "EndpointClass",  # The Endpoint class from endpoint.py
     "GET",
     "POST",
     "PUT",
@@ -58,8 +61,10 @@ __all__ = [
     "DELETE",
     "HEAD",
     "OPTIONS",
-    # Types
+    # HTTP Types
     "HTTPMethod",
     "VALID_HTTP_METHODS",
-    "EndpointMethod",
 ]
+
+# Re-export Endpoint as the type annotation (Protocol)
+Endpoint = EndpointProtocol

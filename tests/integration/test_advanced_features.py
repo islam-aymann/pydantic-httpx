@@ -8,11 +8,11 @@ from pytest_httpx import HTTPXMock
 from pydantic_httpx import (
     GET,
     POST,
-    BaseClient,
     BaseResource,
+    Client,
     ClientConfig,
-    EndpointMethod,
     ResourceConfig,
+    ResponseEndpoint,
 )
 
 
@@ -37,33 +37,33 @@ class UserResource(BaseResource):
     resource_config = ResourceConfig(prefix="/users")
 
     # Basic endpoints
-    get: EndpointMethod[User] = GET("/{id}")
-    create: EndpointMethod[User] = POST("")
+    get: ResponseEndpoint[User] = GET("/{id}")
+    create: ResponseEndpoint[User] = POST("")
 
     # Endpoint with query model
-    search: EndpointMethod[list[User]] = GET("/search", query_model=SearchParams)
+    search: ResponseEndpoint[list[User]] = GET("/search", query_model=SearchParams)
 
     # Endpoint with custom headers
-    get_with_headers: EndpointMethod[User] = GET(
+    get_with_headers: ResponseEndpoint[User] = GET(
         "/{id}", headers={"X-Custom-Header": "test-value"}
     )
 
     # Endpoint with cookies
-    get_with_cookies: EndpointMethod[User] = GET(
+    get_with_cookies: ResponseEndpoint[User] = GET(
         "/{id}", cookies={"session_id": "abc123"}
     )
 
     # Endpoint with auth (Basic auth tuple)
-    get_with_auth: EndpointMethod[User] = GET("/{id}", auth=("username", "password"))
+    get_with_auth: ResponseEndpoint[User] = GET("/{id}", auth=("username", "password"))
 
     # Endpoint with custom timeout
-    get_with_timeout: EndpointMethod[User] = GET("/{id}", timeout=30.0)
+    get_with_timeout: ResponseEndpoint[User] = GET("/{id}", timeout=30.0)
 
     # Endpoint with follow_redirects=False
-    get_no_redirects: EndpointMethod[User] = GET("/{id}", follow_redirects=False)
+    get_no_redirects: ResponseEndpoint[User] = GET("/{id}", follow_redirects=False)
 
 
-class APIClient(BaseClient):
+class APIClient(Client):
     """Test client for Phase 2 features."""
 
     client_config = ClientConfig(base_url="https://api.example.com")
@@ -141,7 +141,7 @@ class TestCustomHeaders:
     def test_client_and_endpoint_headers_merge(self, httpx_mock: HTTPXMock) -> None:
         """Test that client and endpoint headers are merged."""
 
-        class ClientWithHeaders(BaseClient):
+        class ClientWithHeaders(Client):
             client_config = ClientConfig(
                 base_url="https://api.example.com",
                 headers={"X-Client-Header": "client-value"},
@@ -216,9 +216,9 @@ class TestAuthentication:
 
         class CustomAuthResource(BaseResource):
             resource_config = ResourceConfig(prefix="/users")
-            get: EndpointMethod[User] = GET("/{id}", auth=CustomAuth())
+            get: ResponseEndpoint[User] = GET("/{id}", auth=CustomAuth())
 
-        class CustomAuthClient(BaseClient):
+        class CustomAuthClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
             users: CustomAuthResource
 
@@ -266,9 +266,9 @@ class TestRedirects:
         # Create an endpoint that returns dict so we don't need to validate
         class RedirectResource(BaseResource):
             resource_config = ResourceConfig(prefix="/api")
-            get: EndpointMethod[dict] = GET("/resource", follow_redirects=False)
+            get: ResponseEndpoint[dict] = GET("/resource", follow_redirects=False)
 
-        class RedirectClient(BaseClient):
+        class RedirectClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
             api: RedirectResource
 
@@ -299,9 +299,9 @@ class TestURLEncoding:
 
         class ArticleResource(BaseResource):
             resource_config = ResourceConfig(prefix="/articles")
-            get: EndpointMethod[dict] = GET("/{title}")
+            get: ResponseEndpoint[dict] = GET("/{title}")
 
-        class ArticleClient(BaseClient):
+        class ArticleClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
             articles: ArticleResource
 
@@ -322,9 +322,9 @@ class TestURLEncoding:
 
         class SearchResource(BaseResource):
             resource_config = ResourceConfig(prefix="/search")
-            get: EndpointMethod[dict] = GET("/{query}")
+            get: ResponseEndpoint[dict] = GET("/{query}")
 
-        class SearchClient(BaseClient):
+        class SearchClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
             search: SearchResource
 

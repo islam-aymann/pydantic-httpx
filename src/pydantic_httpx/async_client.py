@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, TypeVar, get_args, get_origin
+from typing import Any, TypeVar, get_args, get_origin, get_type_hints
 
 import httpx
 from pydantic import BaseModel
@@ -11,19 +11,23 @@ from pydantic import ValidationError as PydanticValidationError
 from pydantic_httpx.config import ClientConfig
 from pydantic_httpx.endpoint import BaseEndpoint
 from pydantic_httpx.exceptions import HTTPError, RequestError, ValidationError
-from pydantic_httpx.resource import BaseResource
+from pydantic_httpx.resource import BaseResource, EndpointDescriptor
 from pydantic_httpx.response import DataResponse
 from pydantic_httpx.types import HTTPMethod
 
 T = TypeVar("T")
 
 
-class AsyncBaseClient:
+class AsyncClient:
     """
     Async HTTP client that integrates httpx with Pydantic models.
 
     This client wraps httpx.AsyncClient and provides automatic request/response
     validation using Pydantic models defined in resource classes.
+
+    Supports two endpoint types:
+    - Endpoint[T]: Returns data only (auto-extracts response.data)
+    - ResponseEndpoint[T]: Returns full DataResponse[T] wrapper
 
     Attributes:
         client_config: Configuration for the HTTP client.
@@ -32,7 +36,7 @@ class AsyncBaseClient:
     Example:
         >>> from pydantic import BaseModel
         >>> from pydantic_httpx import (
-        >>>     AsyncBaseClient, BaseResource, ClientConfig, GET, DataResponse
+        >>>     AsyncClient, BaseResource, ClientConfig, GET, Endpoint
         >>> )
         >>>
         >>> class User(BaseModel):
@@ -41,15 +45,14 @@ class AsyncBaseClient:
         >>>
         >>> class UserResource(BaseResource):
         >>>     resource_config = ResourceConfig(prefix="/users")
-        >>>     get: DataResponse[User] = GET("/{id}")
+        >>>     get: Endpoint[User] = GET("/{id}")
         >>>
-        >>> class AsyncAPIClient(AsyncBaseClient):
+        >>> class AsyncAPIClient(AsyncClient):
         >>>     client_config = ClientConfig(base_url="https://api.example.com")
         >>>     users: UserResource
         >>>
         >>> async with AsyncAPIClient() as client:
-        >>>     response = await client.users.get(id=1)
-        >>>     user = response.data  # Type: User
+        >>>     user = await client.users.get(id=1)  # Returns User directly
     """
 
     client_config: ClientConfig = ClientConfig()
@@ -69,19 +72,42 @@ class AsyncBaseClient:
         self._init_resources()
 
     def __init_subclass__(cls) -> None:
-        """Called when a subclass is created to parse resource attributes."""
+        """Called when a subclass is created to parse resources and endpoints."""
         super().__init_subclass__()
 
-        # Parse annotations to find resources
-        annotations = getattr(cls, "__annotations__", {})
+        # Use get_type_hints to properly resolve forward references and generics
+        try:
+            type_hints = get_type_hints(cls, include_extras=True)
+        except Exception:
+            # Fallback to raw annotations if get_type_hints fails
+            type_hints = getattr(cls, "__annotations__", {})
 
-        for attr_name, annotation in annotations.items():
+        for attr_name, annotation in type_hints.items():
             # Check if it's a BaseResource subclass
             if isinstance(annotation, type) and issubclass(annotation, BaseResource):
                 # Store the resource class for later initialization
                 if not hasattr(cls, "_resource_classes"):
                     cls._resource_classes = {}  # type: ignore[attr-defined]
                 cls._resource_classes[attr_name] = annotation  # type: ignore[attr-defined]
+                continue
+
+            # Check if it's a direct endpoint definition on the client
+            endpoint = getattr(cls, attr_name, None)
+            if isinstance(endpoint, BaseEndpoint):
+                # Detect if this is Endpoint[T] or ResponseEndpoint[T]
+                origin = get_origin(annotation)
+                return_data_only = True  # Default to Endpoint[T] behavior
+
+                if origin is not None:
+                    origin_name = getattr(origin, "__name__", "")
+                    if origin_name == "ResponseEndpoint":
+                        return_data_only = False
+
+                # Create and set the descriptor (same as Resource does)
+                descriptor = EndpointDescriptor(
+                    attr_name, endpoint, annotation, return_data_only
+                )
+                setattr(cls, attr_name, descriptor)
 
     def _init_resources(self) -> None:
         """Initialize resource instances and bind them to this client."""
@@ -249,7 +275,7 @@ class AsyncBaseClient:
                 original_exception=e,
             ) from e
 
-    async def __aenter__(self) -> AsyncBaseClient:
+    async def __aenter__(self) -> AsyncClient:
         """Support async context manager protocol."""
         return self
 
