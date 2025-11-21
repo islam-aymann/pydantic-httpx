@@ -6,61 +6,98 @@
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A type-safe HTTP client library that combines the power of HTTPX with Pydantic validation. Build declarative, resource-based API clients with automatic request/response validation, full IDE support, and clean Python syntax.
+A type-safe HTTP client library that combines the power of HTTPX with Pydantic validation. Build declarative API clients with automatic request/response validation, full IDE support, and clean Python syntax inspired by FastAPI.
 
-**Status**: 🚧 Alpha - Not yet published to PyPI. Use via GitHub installation.
+**Status**: 🚧 Alpha (v0.1.0) - Not yet published to PyPI. Use via GitHub installation.
 
 ## What It Does
 
-`pydantic-httpx` lets you define HTTP API clients using Pydantic models and type hints. Instead of manually constructing requests and parsing responses, you declare your API structure once and get:
+`pydantic-httpx` lets you define HTTP API clients using Pydantic models and type hints, inspired by FastAPI's approach. Instead of manually constructing requests and parsing responses, you declare your API structure once and get:
 
-- Automatic validation of requests and responses
+- **Two endpoint styles**: Simple `Endpoint[T]` returns data directly, `ResponseEndpoint[T]` provides full response metadata
+- Automatic validation of requests and responses with Pydantic
 - Full type safety and IDE autocomplete
 - Clean, declarative API definitions
 - All HTTPX features (auth, cookies, timeouts, etc.)
-
-**Status**: Production-ready for both synchronous and asynchronous HTTP clients.
+- Both sync and async support with the same resource definitions
 
 ## Features
 
+- ✅ **FastAPI-Style API**: Choose between `Endpoint[T]` (returns data) or `ResponseEndpoint[T]` (returns full response)
 - ✅ **Type-Safe**: Full type hints with assignment syntax for IDE autocomplete and mypy validation
 - ✅ **Pydantic Integration**: Automatic request/response validation using Pydantic models
-- ✅ **Explicit API**: Resource-based organization with clear endpoint definitions
+- ✅ **Flexible Organization**: Define endpoints directly on clients or group them in resources
 - ✅ **Config-Driven**: Familiar `client_config` and `resource_config` (like Pydantic's `model_config`)
 - ✅ **Rich Error Handling**: Detailed exceptions with response context
 - ✅ **Full HTTPX Integration**: Query params, headers, cookies, auth, timeouts, redirects
 - ✅ **URL Encoding**: Automatic encoding of special characters in path parameters
-- ✅ **Sync & Async**: Full support for both sync and async HTTP clients with the same resource definitions
+- ✅ **Sync & Async**: Full support for both sync and async HTTP clients
 
 ## Quick Example
 
+### Simple Endpoint (Returns Data Directly)
+
 ```python
 from pydantic import BaseModel
-from pydantic_httpx import (
-    BaseClient, BaseResource, GET, POST, EndpointMethod,
-    ClientConfig, ResourceConfig
-)
+from pydantic_httpx import Client, Endpoint, GET, ClientConfig
 
-# Define your models
+# Define your model
 class User(BaseModel):
     id: int
     name: str
     email: str
 
+# Define your client
+class APIClient(Client):
+    client_config = ClientConfig(base_url="https://api.example.com")
+
+    # Endpoint[T] returns data directly (no wrapper)
+    get_user: Endpoint[User] = GET("/users/{id}")
+
+# Use it - returns User directly!
+client = APIClient()
+user = client.get_user(id=1)  # Type: User
+print(user.name)  # Direct access to data
+```
+
+### Full Response Endpoint (Returns Response + Data)
+
+```python
+from pydantic_httpx import ResponseEndpoint
+
+class APIClient(Client):
+    client_config = ClientConfig(base_url="https://api.example.com")
+
+    # ResponseEndpoint[T] returns DataResponse[T] with metadata
+    get_user: ResponseEndpoint[User] = GET("/users/{id}")
+
+# Use it - returns DataResponse[User]!
+client = APIClient()
+response = client.get_user(id=1)  # Type: DataResponse[User]
+print(response.status_code)  # 200
+print(response.data.name)  # Access validated data
+print(response.headers)  # Access response headers
+```
+
+### Resource-Based Organization
+
+```python
+from pydantic_httpx import BaseResource, POST, ResourceConfig
+
 class CreateUserRequest(BaseModel):
     name: str
     email: str
 
-# Define a resource
+# Group related endpoints in a resource
 class UserResource(BaseResource):
     resource_config = ResourceConfig(prefix="/users")
 
-    get: EndpointMethod[User] = GET("/{id}")
-    list_all: EndpointMethod[list[User]] = GET("")
-    create: EndpointMethod[User] = POST("", request_model=CreateUserRequest)
+    get: Endpoint[User] = GET("/{id}")
+    list_all: Endpoint[list[User]] = GET("")
+    create: Endpoint[User] = POST("", request_model=CreateUserRequest)
 
-# Define your client
-class APIClient(BaseClient):
+# Define your client with resources
+class APIClient(Client):
     client_config = ClientConfig(base_url="https://api.example.com")
 
     users: UserResource
@@ -68,18 +105,19 @@ class APIClient(BaseClient):
 # Use it!
 client = APIClient()
 user = client.users.get(id=1)
-print(user.data.name)  # Type-safe access!
+users = client.users.list_all()
+new_user = client.users.create(json={"name": "John", "email": "john@example.com"})
 ```
 
-### Async Support
+## Async Support
 
 The same resource definitions work with async clients:
 
 ```python
-from pydantic_httpx import AsyncBaseClient
+from pydantic_httpx import AsyncClient
 
 # Define your async client (same resource definitions!)
-class AsyncAPIClient(AsyncBaseClient):
+class AsyncAPIClient(AsyncClient):
     client_config = ClientConfig(base_url="https://api.example.com")
 
     users: UserResource  # Same resource as sync!
@@ -87,16 +125,57 @@ class AsyncAPIClient(AsyncBaseClient):
 # Use it with async/await!
 async def main():
     async with AsyncAPIClient() as client:
-        user = await client.users.get(id=1)
-        print(user.data.name)  # Type-safe async access!
+        user = await client.users.get(id=1)  # Returns User directly
+        print(user.name)  # Type-safe async access!
 ```
 
-### Advanced Features
+Or with direct endpoints:
 
 ```python
-from httpx import BasicAuth
+class AsyncAPIClient(AsyncClient):
+    client_config = ClientConfig(base_url="https://api.example.com")
 
-# Query parameters with validation
+    get_user: Endpoint[User] = GET("/users/{id}")
+
+async def main():
+    async with AsyncAPIClient() as client:
+        user = await client.get_user(id=1)  # Returns User directly
+        print(user.name)
+```
+
+## When to Use Each Endpoint Type
+
+### Use `Endpoint[T]` when:
+- You only need the validated data, not response metadata
+- You want simpler, cleaner code with direct data access
+- Most common use case for REST APIs
+
+```python
+get_user: Endpoint[User] = GET("/users/{id}")
+user = client.get_user(id=1)  # Returns User directly
+print(user.name)  # Clean and simple
+```
+
+### Use `ResponseEndpoint[T]` when:
+- You need HTTP metadata (status codes, headers, cookies)
+- You want to handle different status codes differently
+- You need access to response timing or raw response
+
+```python
+get_user: ResponseEndpoint[User] = GET("/users/{id}")
+response = client.get_user(id=1)  # Returns DataResponse[User]
+if response.status_code == 200:
+    print(response.data.name)
+    print(f"Took {response.elapsed.total_seconds()}s")
+```
+
+## Advanced Features
+
+### Query Parameters with Validation
+
+```python
+from pydantic_httpx import BaseResource, ResourceConfig
+
 class SearchParams(BaseModel):
     status: str
     limit: int = 10
@@ -104,26 +183,35 @@ class SearchParams(BaseModel):
 class UserResource(BaseResource):
     resource_config = ResourceConfig(prefix="/users")
 
-    # Query parameters
-    search: EndpointMethod[list[User]] = GET("/search", query_model=SearchParams)
+    # With Pydantic validation
+    search: Endpoint[list[User]] = GET("/search", query_model=SearchParams)
+
+# Usage - automatic validation
+client = APIClient()
+results = client.users.search(status="active", limit=5)  # Returns list[User]
+```
+
+### Authentication, Headers, and Timeouts
+
+```python
+from httpx import BasicAuth
+
+class UserResource(BaseResource):
+    resource_config = ResourceConfig(prefix="/users")
 
     # Custom headers and auth
-    protected: EndpointMethod[User] = GET(
+    protected: ResponseEndpoint[User] = GET(
         "/{id}",
         headers={"X-API-Version": "v1"},
         auth=BasicAuth("user", "pass")
     )
 
     # Custom timeout and cookies
-    slow_endpoint: EndpointMethod[dict] = GET(
+    slow_endpoint: Endpoint[dict] = GET(
         "/data",
         timeout=30.0,
         cookies={"session": "abc123"}
     )
-
-# Usage
-client = APIClient()
-results = client.users.search(status="active", limit=5)
 ```
 
 ## Installation
@@ -163,46 +251,58 @@ dependencies = [
 - httpx >= 0.27.0
 - pydantic >= 2.0.0
 
-## Development Progress
+## API Design
 
-### ✅ Phase 1: Foundation (Complete)
-- [x] Config classes (`ClientConfig`, `ResourceConfig`)
-- [x] Exception hierarchy (`ResponseError`, `HTTPError`, `ValidationError`, etc.)
-- [x] Response wrapper (`DataResponse[T]`)
-- [x] Type definitions
-- [x] Comprehensive test suite (37 tests, 92% coverage)
+### Two Endpoint Types
 
-### ✅ Phase 2: Core Logic (Complete)
-- [x] Endpoint metadata classes (`BaseEndpoint`, `Endpoint`, `GET`, `POST`, etc.)
-- [x] BaseResource implementation with descriptor protocol
-- [x] BaseClient implementation with HTTPX integration
-- [x] Request/response serialization with Pydantic validation
-- [x] Path parameter interpolation with URL encoding
-- [x] Query parameters (with/without Pydantic validation)
-- [x] Custom headers per endpoint
-- [x] Custom timeout per endpoint
-- [x] Authentication support (Basic, Bearer, custom `httpx.Auth`)
-- [x] Cookies support
-- [x] Redirect control (`follow_redirects`)
-- [x] URL encoding for special characters in path params
-- [x] HTTPMethod as str, Enum for better type safety
-- [x] Assignment-based API (following modern Python conventions)
-- [x] Comprehensive test suite (99 tests, 96% coverage)
+This library provides two ways to define endpoints, inspired by FastAPI's approach:
 
-### ✅ Phase 3: Async Support (Complete)
-- [x] `AsyncBaseClient` wrapping `httpx.AsyncClient`
-- [x] Runtime detection in descriptor to return sync or async methods
-- [x] Single resource definition works with both sync and async clients
-- [x] Async context manager support (`async with`)
-- [x] Comprehensive async test suite (8 async tests)
-- [x] Full test coverage (107 tests, 93% coverage)
+1. **`Endpoint[T]`** - Returns data directly (most common)
+   - Automatically extracts `response.data`
+   - Cleaner code for typical use cases
+   - Type hint: `Endpoint[User]` → returns `User`
 
-### 📋 Phase 4: Advanced Features (Planned)
-- [ ] File uploads and multipart forms
-- [ ] Union response types for status codes
-- [ ] Middleware/hooks system
-- [ ] Retry logic with exponential backoff
-- [ ] Request/response logging and debugging
+2. **`ResponseEndpoint[T]`** - Returns full response wrapper
+   - Access to HTTP metadata (status, headers, cookies, timing)
+   - Type hint: `ResponseEndpoint[User]` → returns `DataResponse[User]`
+
+### Flexible Organization
+
+Define endpoints in two ways:
+
+1. **Direct on Client** - For simple APIs
+   ```python
+   class APIClient(Client):
+       get_user: Endpoint[User] = GET("/users/{id}")
+   ```
+
+2. **Grouped in Resources** - For larger APIs
+   ```python
+   class UserResource(BaseResource):
+       resource_config = ResourceConfig(prefix="/users")
+       get: Endpoint[User] = GET("/{id}")
+       list_all: Endpoint[list[User]] = GET("")
+   ```
+
+## Current Features
+
+### ✅ Complete
+- **Two endpoint types**: `Endpoint[T]` and `ResponseEndpoint[T]`
+- **Sync & Async**: `Client` and `AsyncClient` with same resource definitions
+- **Type-safe**: Full IDE autocomplete and mypy validation
+- **Pydantic validation**: Request/response models with automatic validation
+- **Flexible organization**: Direct endpoints or resource-based grouping
+- **HTTPX integration**: Query params, headers, auth, cookies, timeouts, redirects
+- **URL encoding**: Automatic encoding of path parameters
+- **Error handling**: Rich exceptions with response context
+- **111 tests, 86% coverage**
+
+### 📋 Planned
+- File uploads and multipart forms
+- Middleware/hooks system (before/after/wrap validators)
+- Union response types for different status codes
+- Retry logic with exponential backoff
+- Request/response logging and debugging
 
 ## Development
 
