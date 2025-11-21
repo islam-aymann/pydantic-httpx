@@ -13,6 +13,7 @@ from pydantic_httpx import (
     BaseResource,
     ClientConfig,
     DataResponse,
+    EndpointMethod,
     HTTPError,
     ResourceConfig,
     ValidationError,
@@ -39,10 +40,10 @@ class UserResource(BaseResource):
 
     resource_config = ResourceConfig(prefix="/users")
 
-    get: DataResponse[User] = GET("/{id}")
-    list_all: DataResponse[list[User]] = GET("")
-    create: DataResponse[User] = POST("", request_model=CreateUserRequest)
-    delete: DataResponse[None] = DELETE("/{id}")
+    get: EndpointMethod[User] = GET("/{id}")
+    list_all: EndpointMethod[list[User]] = GET("")
+    create: EndpointMethod[User] = POST("", request_model=CreateUserRequest)
+    delete: EndpointMethod[None] = DELETE("/{id}")
 
 
 class APIClient(BaseClient):

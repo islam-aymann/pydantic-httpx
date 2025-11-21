@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, TypeVar
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, Any, TypeVar, get_type_hints, overload
 
 from pydantic_httpx.config import ResourceConfig
 from pydantic_httpx.endpoint import BaseEndpoint
@@ -40,7 +41,47 @@ class EndpointDescriptor:
         """Called when the descriptor is assigned to a class attribute."""
         self.name = name
 
-    def __get__(self, instance: BaseResource | None, owner: type) -> Any:
+    def __call__(self, **kwargs: Any) -> DataResponse[Any]:
+        """
+        Type hint for IDE support indicating this descriptor is callable.
+
+        This method is never actually called at runtime - it exists purely
+        for type checkers and IDEs to understand that accessing this descriptor
+        on an instance returns a callable that produces DataResponse[T].
+
+        The actual implementation is in __get__ which returns a function.
+
+        Args:
+            **kwargs: Path parameters, query parameters, or request body data.
+
+        Returns:
+            DataResponse[T]: Response wrapper containing validated data.
+
+        Raises:
+            NotImplementedError: This method should never be called at runtime.
+        """
+        raise NotImplementedError(
+            "EndpointDescriptor.__call__ should never be invoked directly. "
+            "This method exists only for type checking. The actual callable "
+            "is returned by __get__."
+        )
+
+    @overload
+    def __get__(
+        self, instance: None, owner: type[BaseResource]
+    ) -> EndpointDescriptor: ...
+
+    @overload
+    def __get__(
+        self, instance: BaseResource, owner: type[BaseResource]
+    ) -> Callable[..., DataResponse[Any] | Awaitable[DataResponse[Any]]]: ...
+
+    def __get__(
+        self, instance: BaseResource | None, owner: type[BaseResource]
+    ) -> (
+        EndpointDescriptor
+        | Callable[..., DataResponse[Any] | Awaitable[DataResponse[Any]]]
+    ):
         """
         Return a callable that executes the HTTP request.
 
@@ -146,7 +187,7 @@ class BaseResource:
     Example:
         >>> from pydantic import BaseModel
         >>> from pydantic_httpx import (
-        >>>     BaseResource, GET, POST, DataResponse, ResourceConfig
+        >>>     BaseResource, GET, POST, EndpointMethod, ResourceConfig
         >>> )
         >>>
         >>> class User(BaseModel):
@@ -156,9 +197,9 @@ class BaseResource:
         >>> class UserResource(BaseResource):
         >>>     resource_config = ResourceConfig(prefix="/users")
         >>>
-        >>>     get: DataResponse[User] = GET("/{id}")
-        >>>     list: DataResponse[list[User]] = GET("")
-        >>>     create: DataResponse[User] = POST("", request_model=User)
+        >>>     get: EndpointMethod[User] = GET("/{id}")
+        >>>     list: EndpointMethod[list[User]] = GET("")
+        >>>     create: EndpointMethod[User] = POST("", request_model=User)
     """
 
     resource_config: ResourceConfig = ResourceConfig()
@@ -179,14 +220,18 @@ class BaseResource:
         This method parses endpoint definitions and replaces them with
         EndpointDescriptor instances.
 
-        Supports: get: DataResponse[User] = GET("/{id}")
+        Supports: get: EndpointMethod[User] = GET("/{id}")
         """
         super().__init_subclass__()
 
-        # Parse annotations to find endpoints
-        annotations = getattr(cls, "__annotations__", {})
+        # Use get_type_hints to properly resolve forward references and generics
+        try:
+            type_hints = get_type_hints(cls, include_extras=True)
+        except Exception:
+            # Fallback to raw annotations if get_type_hints fails
+            type_hints = getattr(cls, "__annotations__", {})
 
-        for attr_name, annotation in annotations.items():
+        for attr_name, annotation in type_hints.items():
             # Get the actual value assigned to this attribute
             endpoint = getattr(cls, attr_name, None)
 
@@ -194,8 +239,8 @@ class BaseResource:
             if not isinstance(endpoint, BaseEndpoint):
                 continue
 
-            # The annotation should be DataResponse[T]
-            # Extract the response type from the annotation
+            # The annotation should be EndpointMethod[T] (or DataResponse[T] for compat)
+            # The annotation itself is the response type wrapper
             response_type = annotation
 
             # Create and set the descriptor

@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
 import httpx
 from pydantic import BaseModel
 
 from pydantic_httpx.types import HTTPMethod
+
+if TYPE_CHECKING:
+    from pydantic_httpx.response import DataResponse
 
 
 @dataclass
@@ -102,6 +105,18 @@ class BaseEndpoint:
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.method=}, {self.path=})"
+
+    if TYPE_CHECKING:
+
+        def __call__(self, **kwargs: Any) -> DataResponse[Any]:
+            """
+            Type hint for IDE support.
+
+            This method exists only for type checking and is never called
+            at runtime. At runtime, endpoints are replaced by
+            EndpointDescriptor which handles calls.
+            """
+            ...
 
 
 @dataclass

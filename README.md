@@ -37,7 +37,7 @@ A type-safe HTTP client library that combines the power of HTTPX with Pydantic v
 ```python
 from pydantic import BaseModel
 from pydantic_httpx import (
-    BaseClient, BaseResource, GET, POST, DataResponse,
+    BaseClient, BaseResource, GET, POST, EndpointMethod,
     ClientConfig, ResourceConfig
 )
 
@@ -55,9 +55,9 @@ class CreateUserRequest(BaseModel):
 class UserResource(BaseResource):
     resource_config = ResourceConfig(prefix="/users")
 
-    get: DataResponse[User] = GET("/{id}")
-    list_all: DataResponse[list[User]] = GET("")
-    create: DataResponse[User] = POST("", request_model=CreateUserRequest)
+    get: EndpointMethod[User] = GET("/{id}")
+    list_all: EndpointMethod[list[User]] = GET("")
+    create: EndpointMethod[User] = POST("", request_model=CreateUserRequest)
 
 # Define your client
 class APIClient(BaseClient):
@@ -105,17 +105,17 @@ class UserResource(BaseResource):
     resource_config = ResourceConfig(prefix="/users")
 
     # Query parameters
-    search: DataResponse[list[User]] = GET("/search", query_model=SearchParams)
+    search: EndpointMethod[list[User]] = GET("/search", query_model=SearchParams)
 
     # Custom headers and auth
-    protected: DataResponse[User] = GET(
+    protected: EndpointMethod[User] = GET(
         "/{id}",
         headers={"X-API-Version": "v1"},
         auth=BasicAuth("user", "pass")
     )
 
     # Custom timeout and cookies
-    slow_endpoint: DataResponse[dict] = GET(
+    slow_endpoint: EndpointMethod[dict] = GET(
         "/data",
         timeout=30.0,
         cookies={"session": "abc123"}
