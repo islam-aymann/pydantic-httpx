@@ -284,6 +284,113 @@ Define endpoints in two ways:
        list_all: Endpoint[list[User]] = GET("")
    ```
 
+## Validators
+
+Add custom validation, transformation, or control logic to endpoints using the `@endpoint_validator` decorator (Pydantic-style):
+
+### Before Validators
+
+Transform or validate parameters before the request:
+
+```python
+from pydantic_httpx import Client, GET, Endpoint, endpoint_validator
+
+class APIClient(Client):
+    client_config = ClientConfig(base_url="https://api.example.com")
+
+    get_user: Endpoint[User] = GET("/users/{id}")
+
+    @endpoint_validator("get_user", mode="before")
+    def validate_id(cls, params: dict) -> dict:
+        """Validate ID before making request."""
+        if params.get("id", 0) <= 0:
+            raise ValueError("User ID must be positive")
+        return params
+
+client = APIClient()
+user = client.get_user(id=1)  # ✅ Valid
+# client.get_user(id=0)  # ❌ Raises ValueError
+```
+
+### After Validators
+
+Transform the response after the request:
+
+```python
+class APIClient(Client):
+    client_config = ClientConfig(base_url="https://api.example.com")
+
+    get_user: ResponseEndpoint[User] = GET("/users/{id}")
+
+    @endpoint_validator("get_user", mode="after")
+    def handle_404(cls, response: DataResponse[User]) -> DataResponse[User | None]:
+        """Return None for 404 responses."""
+        if response.status_code == 404:
+            return DataResponse(response.response, None)
+        return response
+
+client = APIClient()
+response = client.get_user(id=999)
+if response.data is None:
+    print("User not found")
+```
+
+### Wrap Validators
+
+Full control over request execution (caching, retry, etc.):
+
+```python
+class APIClient(Client):
+    client_config = ClientConfig(base_url="https://api.example.com")
+
+    get_user: Endpoint[User] = GET("/users/{id}")
+
+    _cache: dict[int, User] = {}
+
+    @endpoint_validator("get_user", mode="wrap")
+    def cache_user(cls, handler, params: dict) -> User:
+        """Cache user responses."""
+        user_id = params["id"]
+
+        # Check cache
+        if user_id in cls._cache:
+            return cls._cache[user_id]
+
+        # Call the actual request
+        response = handler(params)
+        cls._cache[user_id] = response.data
+        return response.data
+
+client = APIClient()
+user1 = client.get_user(id=1)  # Hits API
+user2 = client.get_user(id=1)  # Returns cached
+```
+
+### Resource Validators
+
+Validators can also be defined on resource classes:
+
+```python
+class UserResource(BaseResource):
+    resource_config = ResourceConfig(prefix="/users")
+
+    get: Endpoint[User] = GET("/{id}")
+
+    @endpoint_validator("get", mode="before")
+    def validate_get_id(cls, params: dict) -> dict:
+        if params.get("id", 0) < 1:
+            raise ValueError("ID must be at least 1")
+        return params
+
+class APIClient(Client):
+    client_config = ClientConfig(base_url="https://api.example.com")
+    users: UserResource
+
+client = APIClient()
+user = client.users.get(id=5)  # ✅ Valid
+# client.users.get(id=0)  # ❌ Raises ValueError
+```
+
 ## Current Features
 
 ### ✅ Complete
@@ -291,15 +398,15 @@ Define endpoints in two ways:
 - **Sync & Async**: `Client` and `AsyncClient` with same resource definitions
 - **Type-safe**: Full IDE autocomplete and mypy validation
 - **Pydantic validation**: Request/response models with automatic validation
+- **Endpoint validators**: Three modes (before/after/wrap) for custom logic
 - **Flexible organization**: Direct endpoints or resource-based grouping
 - **HTTPX integration**: Query params, headers, auth, cookies, timeouts, redirects
 - **URL encoding**: Automatic encoding of path parameters
 - **Error handling**: Rich exceptions with response context
-- **111 tests, 86% coverage**
+- **125 tests, 92% coverage**
 
 ### 📋 Planned
 - File uploads and multipart forms
-- Middleware/hooks system (before/after/wrap validators)
 - Union response types for different status codes
 - Retry logic with exponential backoff
 - Request/response logging and debugging
