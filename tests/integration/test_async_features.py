@@ -7,10 +7,10 @@ from pytest_httpx import HTTPXMock
 from pydantic_httpx import (
     GET,
     POST,
-    AsyncBaseClient,
+    AsyncClient,
     BaseResource,
     ClientConfig,
-    EndpointMethod,
+    ResponseEndpoint,
     ResourceConfig,
 )
 
@@ -35,12 +35,12 @@ class UserResource(BaseResource):
 
     resource_config = ResourceConfig(prefix="/users")
 
-    get: EndpointMethod[User] = GET("/{id}")
-    list_all: EndpointMethod[list[User]] = GET("")
-    create: EndpointMethod[User] = POST("", request_model=CreateUserRequest)
+    get: ResponseEndpoint[User] = GET("/{id}")
+    list_all: ResponseEndpoint[list[User]] = GET("")
+    create: ResponseEndpoint[User] = POST("", request_model=CreateUserRequest)
 
 
-class AsyncAPIClient(AsyncBaseClient):
+class AsyncAPIClient(AsyncClient):
     """Test async client."""
 
     client_config = ClientConfig(base_url="https://api.example.com")
@@ -122,9 +122,9 @@ class TestAsyncWithSyncComparison:
 
     def test_same_resource_sync(self, httpx_mock: HTTPXMock) -> None:
         """Test that the same resource definition works with sync client."""
-        from pydantic_httpx import BaseClient
+        from pydantic_httpx import Client
 
-        class SyncAPIClient(BaseClient):
+        class SyncAPIClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
             users: UserResource
 
@@ -148,9 +148,9 @@ class TestAsyncQueryParameters:
 
         class SearchResource(BaseResource):
             resource_config = ResourceConfig(prefix="/search")
-            search: EndpointMethod[list[User]] = GET("")
+            search: ResponseEndpoint[list[User]] = GET("")
 
-        class SearchClient(AsyncBaseClient):
+        class SearchClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
             search: SearchResource
 
