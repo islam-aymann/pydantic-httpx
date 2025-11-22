@@ -1,5 +1,7 @@
 """Integration tests for async HTTP features."""
 
+from typing import Annotated
+
 import pytest
 from pydantic import BaseModel
 from pytest_httpx import HTTPXMock
@@ -28,9 +30,9 @@ class UserResource(BaseResource):
 
     resource_config = ResourceConfig(prefix="/users")
 
-    get: ResponseEndpoint[User] = GET("/{id}")
-    list_all: ResponseEndpoint[list[User]] = GET("")
-    create: ResponseEndpoint[User] = POST("")
+    get: Annotated[ResponseEndpoint[User], GET("/{id}")]
+    list_all: Annotated[ResponseEndpoint[list[User]], GET("")]
+    create: Annotated[ResponseEndpoint[User], POST("")]
 
 
 class AsyncAPIClient(AsyncClient):
@@ -141,7 +143,7 @@ class TestAsyncQueryParameters:
 
         class SearchResource(BaseResource):
             resource_config = ResourceConfig(prefix="/search")
-            search: ResponseEndpoint[list[User]] = GET("")
+            search: Annotated[ResponseEndpoint[list[User]], GET("")]
 
         class SearchClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")

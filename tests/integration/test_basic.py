@@ -1,5 +1,7 @@
 """Integration tests for client, resource, and endpoint together."""
 
+from typing import Annotated
+
 import pytest
 from httpx import codes
 from pydantic import BaseModel
@@ -41,10 +43,10 @@ class UserResource(BaseResource):
 
     resource_config = ResourceConfig(prefix="/users")
 
-    get: ResponseEndpoint[User] = GET("/{id}")
-    list_all: ResponseEndpoint[list[User]] = GET("")
-    create: ResponseEndpoint[User, CreateUserRequest] = POST("")
-    delete: ResponseEndpoint[None] = DELETE("/{id}")
+    get: Annotated[ResponseEndpoint[User], GET("/{id}")]
+    list_all: Annotated[ResponseEndpoint[list[User]], GET("")]
+    create: Annotated[ResponseEndpoint[User, CreateUserRequest], POST("")]
+    delete: Annotated[ResponseEndpoint[None], DELETE("/{id}")]
 
 
 class APIClient(Client):
@@ -237,7 +239,7 @@ class TestIntegration:
 
         class SimpleClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Endpoint[User] = GET("/users/{id}")
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
         client = SimpleClient()
         result = client.get_user(id=1)
@@ -261,7 +263,7 @@ class TestIntegration:
 
         class SimpleClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            list_users: Endpoint[list[User]] = GET("/users")
+            list_users: Annotated[Endpoint[list[User]], GET("/users")]
 
         client = SimpleClient()
         result = client.list_users()
@@ -287,7 +289,7 @@ class TestIntegration:
 
         class FullResponseClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: ResponseEndpoint[User] = GET("/users/{id}")
+            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
 
         client = FullResponseClient()
         result = client.get_user(id=1)
@@ -314,8 +316,8 @@ class TestIntegration:
 
         class MixedClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            list_users: Endpoint[list[User]] = GET("/users")
-            get_user: ResponseEndpoint[User] = GET("/users/{id}")
+            list_users: Annotated[Endpoint[list[User]], GET("/users")]
+            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
 
         client = MixedClient()
 

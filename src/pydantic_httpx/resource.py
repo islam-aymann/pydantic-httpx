@@ -368,8 +368,9 @@ class BaseResource:
         EndpointDescriptor instances.
 
         Supports:
-        - get: Endpoint[User] = GET("/{id}")  # Returns User
-        - get: ResponseEndpoint[User] = GET("/{id}")  # Returns DataResponse[User]
+        - get: Annotated[Endpoint[User], GET("/{id}")]  # Returns User
+        - get: Annotated[ResponseEndpoint[User], GET("/{id}")]
+               # Returns DataResponse[User]
         """
         super().__init_subclass__()
 
@@ -384,27 +385,48 @@ class BaseResource:
             type_hints = getattr(cls, "__annotations__", {})
 
         for attr_name, annotation in type_hints.items():
-            endpoint = getattr(cls, attr_name, None)
+            origin = get_origin(annotation)
 
-            if not isinstance(endpoint, BaseEndpoint):
+            if origin is None:
                 continue
 
-            origin = get_origin(annotation)
-            return_data_only = True
-
-            if origin is not None:
-                origin_name = getattr(origin, "__name__", "")
-                if origin_name == "ResponseEndpoint":
-                    return_data_only = False
+            origin_name = getattr(origin, "__name__", "")
+            if origin_name != "Annotated":
+                continue
 
             args = get_args(annotation)
-            request_model = None
-            if len(args) > 1 and args[1] is not type(None):
-                request_model = args[1]
+            if not args or len(args) < 2:
+                continue
 
-            response_type = annotation
+            endpoint_protocol = args[0]
+            metadata = args[1:]
+
+            endpoint_spec = None
+            for item in metadata:
+                if isinstance(item, BaseEndpoint):
+                    endpoint_spec = item
+                    break
+
+            if endpoint_spec is None:
+                continue
+
+            protocol_origin = get_origin(endpoint_protocol)
+            return_data_only = True
+
+            if protocol_origin is not None:
+                protocol_name = getattr(protocol_origin, "__name__", "")
+                if protocol_name == "ResponseEndpoint":
+                    return_data_only = False
+
+            protocol_args = get_args(endpoint_protocol)
+            request_model = None
+            if len(protocol_args) > 1 and protocol_args[1] is not type(None):
+                request_model = protocol_args[1]
+
+            response_type = endpoint_protocol
 
             descriptor = EndpointDescriptor(
-                attr_name, endpoint, response_type, return_data_only, request_model
+                attr_name, endpoint_spec, response_type, return_data_only, request_model
             )
             setattr(cls, attr_name, descriptor)
+            descriptor.__set_name__(cls, attr_name)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
-from typing_extensions import TypeVar, get_origin, get_type_hints
+from typing_extensions import TypeVar, get_args, get_origin, get_type_hints
 
 from pydantic_httpx._defaults import CLIENT_CONFIG_DEFAULTS
 from pydantic_httpx._request_builder import (
@@ -110,20 +110,53 @@ class AsyncClient:
                 cls._resource_classes[attr_name] = annotation
                 continue
 
-            endpoint = getattr(cls, attr_name, None)
-            if isinstance(endpoint, BaseEndpoint):
-                origin = get_origin(annotation)
-                return_data_only = True
+            origin = get_origin(annotation)
 
-                if origin is not None:
-                    origin_name = getattr(origin, "__name__", "")
-                    if origin_name == "ResponseEndpoint":
-                        return_data_only = False
+            if origin is None:
+                continue
 
-                descriptor = EndpointDescriptor(
-                    attr_name, endpoint, annotation, return_data_only
-                )
-                setattr(cls, attr_name, descriptor)
+            origin_name = getattr(origin, "__name__", "")
+            if origin_name != "Annotated":
+                continue
+
+            args = get_args(annotation)
+            if not args or len(args) < 2:
+                continue
+
+            endpoint_protocol = args[0]
+            metadata = args[1:]
+
+            endpoint_spec = None
+            for item in metadata:
+                if isinstance(item, BaseEndpoint):
+                    endpoint_spec = item
+                    break
+
+            if endpoint_spec is None:
+                continue
+
+            protocol_origin = get_origin(endpoint_protocol)
+            return_data_only = True
+
+            if protocol_origin is not None:
+                protocol_name = getattr(protocol_origin, "__name__", "")
+                if protocol_name == "ResponseEndpoint":
+                    return_data_only = False
+
+            protocol_args = get_args(endpoint_protocol)
+            request_model = None
+            if len(protocol_args) > 1 and protocol_args[1] is not type(None):
+                request_model = protocol_args[1]
+
+            descriptor = EndpointDescriptor(
+                attr_name,
+                endpoint_spec,
+                endpoint_protocol,
+                return_data_only,
+                request_model,
+            )
+            setattr(cls, attr_name, descriptor)
+            descriptor.__set_name__(cls, attr_name)
 
     def _init_resources(self) -> None:
         """Initialize resource instances and bind them to this client."""

@@ -1,5 +1,7 @@
 """Integration tests for advanced HTTP features (query params, auth, cookies, etc.)."""
 
+from typing import Annotated
+
 import httpx
 from httpx import codes
 from pydantic import BaseModel
@@ -37,30 +39,36 @@ class UserResource(BaseResource):
     resource_config = ResourceConfig(prefix="/users")
 
     # Basic endpoints
-    get: ResponseEndpoint[User] = GET("/{id}")
-    create: ResponseEndpoint[User] = POST("")
+    get: Annotated[ResponseEndpoint[User], GET("/{id}")]
+    create: Annotated[ResponseEndpoint[User], POST("")]
 
     # Endpoint with query model
-    search: ResponseEndpoint[list[User]] = GET("/search", query_model=SearchParams)
+    search: Annotated[
+        ResponseEndpoint[list[User]], GET("/search", query_model=SearchParams)
+    ]
 
     # Endpoint with custom headers
-    get_with_headers: ResponseEndpoint[User] = GET(
-        "/{id}", headers={"X-Custom-Header": "test-value"}
-    )
+    get_with_headers: Annotated[
+        ResponseEndpoint[User], GET("/{id}", headers={"X-Custom-Header": "test-value"})
+    ]
 
     # Endpoint with cookies
-    get_with_cookies: ResponseEndpoint[User] = GET(
-        "/{id}", cookies={"session_id": "abc123"}
-    )
+    get_with_cookies: Annotated[
+        ResponseEndpoint[User], GET("/{id}", cookies={"session_id": "abc123"})
+    ]
 
     # Endpoint with auth (Basic auth tuple)
-    get_with_auth: ResponseEndpoint[User] = GET("/{id}", auth=("username", "password"))
+    get_with_auth: Annotated[
+        ResponseEndpoint[User], GET("/{id}", auth=("username", "password"))
+    ]
 
     # Endpoint with custom timeout
-    get_with_timeout: ResponseEndpoint[User] = GET("/{id}", timeout=30.0)
+    get_with_timeout: Annotated[ResponseEndpoint[User], GET("/{id}", timeout=30.0)]
 
     # Endpoint with follow_redirects=False
-    get_no_redirects: ResponseEndpoint[User] = GET("/{id}", follow_redirects=False)
+    get_no_redirects: Annotated[
+        ResponseEndpoint[User], GET("/{id}", follow_redirects=False)
+    ]
 
 
 class APIClient(Client):
@@ -216,7 +224,7 @@ class TestAuthentication:
 
         class CustomAuthResource(BaseResource):
             resource_config = ResourceConfig(prefix="/users")
-            get: ResponseEndpoint[User] = GET("/{id}", auth=CustomAuth())
+            get: Annotated[ResponseEndpoint[User], GET("/{id}", auth=CustomAuth())]
 
         class CustomAuthClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
@@ -266,7 +274,9 @@ class TestRedirects:
         # Create an endpoint that returns dict so we don't need to validate
         class RedirectResource(BaseResource):
             resource_config = ResourceConfig(prefix="/api")
-            get: ResponseEndpoint[dict] = GET("/resource", follow_redirects=False)
+            get: Annotated[
+                ResponseEndpoint[dict], GET("/resource", follow_redirects=False)
+            ]
 
         class RedirectClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
@@ -299,7 +309,7 @@ class TestURLEncoding:
 
         class ArticleResource(BaseResource):
             resource_config = ResourceConfig(prefix="/articles")
-            get: ResponseEndpoint[dict] = GET("/{title}")
+            get: Annotated[ResponseEndpoint[dict], GET("/{title}")]
 
         class ArticleClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
@@ -322,7 +332,7 @@ class TestURLEncoding:
 
         class SearchResource(BaseResource):
             resource_config = ResourceConfig(prefix="/search")
-            get: ResponseEndpoint[dict] = GET("/{query}")
+            get: Annotated[ResponseEndpoint[dict], GET("/{query}")]
 
         class SearchClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
