@@ -157,15 +157,15 @@ class GET(BaseEndpoint):
 
     Example:
         >>> from pydantic import BaseModel
-        >>> from pydantic_httpx import GET, DataResponse
+        >>> from pydantic_httpx import BaseResource, Endpoint, GET
         >>>
         >>> class User(BaseModel):
         >>>     id: int
         >>>     name: str
         >>>
         >>> class UserResource(BaseResource):
-        >>>     get: DataResponse[User] = GET("/{id}")
-        >>>     list_all: DataResponse[list[User]] = GET("")
+        >>>     get: Endpoint[User] = GET("/{id}")
+        >>>     list_all: Endpoint[list[User]] = GET("")
     """
 
     def __init__(
@@ -196,7 +196,7 @@ class POST(BaseEndpoint):
     POST endpoint for creating resources.
 
     Example:
-        >>> create: DataResponse[User] = POST("")
+        >>> create: Endpoint[User] = POST("")
     """
 
     def __init__(
@@ -227,7 +227,7 @@ class PUT(BaseEndpoint):
     PUT endpoint for updating/replacing resources.
 
     Example:
-        >>> update: DataResponse[User] = PUT("/{id}")
+        >>> update: Endpoint[User] = PUT("/{id}")
     """
 
     def __init__(
@@ -258,7 +258,7 @@ class PATCH(BaseEndpoint):
     PATCH endpoint for partially updating resources.
 
     Example:
-        >>> partial_update: DataResponse[User] = PATCH("/{id}")
+        >>> partial_update: Endpoint[User] = PATCH("/{id}")
     """
 
     def __init__(
@@ -289,7 +289,7 @@ class DELETE(BaseEndpoint):
     DELETE endpoint for removing resources.
 
     Example:
-        >>> delete: DataResponse[None] = DELETE("/{id}")
+        >>> delete: Endpoint[None] = DELETE("/{id}")
     """
 
     def __init__(
@@ -320,7 +320,7 @@ class HEAD(BaseEndpoint):
     HEAD endpoint for retrieving headers only.
 
     Example:
-        >>> check: DataResponse[None] = HEAD("/{id}")
+        >>> check: Endpoint[None] = HEAD("/{id}")
     """
 
     def __init__(
@@ -351,7 +351,7 @@ class OPTIONS(BaseEndpoint):
     OPTIONS endpoint for retrieving supported methods.
 
     Example:
-        >>> options: DataResponse[dict] = OPTIONS("")
+        >>> options: Endpoint[dict] = OPTIONS("")
     """
 
     def __init__(
