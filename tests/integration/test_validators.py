@@ -26,10 +26,6 @@ class User(BaseModel):
     name: str
 
 
-class CreateUserRequest(BaseModel):
-    name: str
-
-
 # Test client with "before" validator
 class ClientWithBeforeValidator(Client):
     client_config = ClientConfig(base_url="https://api.example.com")
@@ -100,7 +96,7 @@ class UserResourceWithValidators(BaseResource):
     resource_config = ResourceConfig(prefix="/users")
 
     get: Endpoint[User] = GET("/{id}")
-    create: Endpoint[User] = POST("", request_model=CreateUserRequest)
+    create: Endpoint[User] = POST("")
 
     @endpoint_validator("get", mode="before")
     def validate_get_id(cls, params: dict[str, Any]) -> dict[str, Any]:

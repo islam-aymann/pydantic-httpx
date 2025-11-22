@@ -43,7 +43,7 @@ class UserResource(BaseResource):
 
     get: ResponseEndpoint[User] = GET("/{id}")
     list_all: ResponseEndpoint[list[User]] = GET("")
-    create: ResponseEndpoint[User] = POST("", request_model=CreateUserRequest)
+    create: ResponseEndpoint[User, CreateUserRequest] = POST("")
     delete: ResponseEndpoint[None] = DELETE("/{id}")
 
 

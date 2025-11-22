@@ -3,6 +3,7 @@
 from typing import Any
 
 import httpx
+from pydantic_core import ErrorDetails
 
 
 class ResponseError(Exception):
@@ -71,7 +72,7 @@ class ValidationError(ResponseError):
         self,
         message: str,
         response: httpx.Response,
-        validation_errors: list[dict[str, Any]],
+        validation_errors: list[ErrorDetails],
         raw_data: Any = None,
     ) -> None:
         super().__init__(message, response)
@@ -83,7 +84,7 @@ class ValidationError(ResponseError):
         return f"{self.message} ({error_count} validation error(s))"
 
 
-class RequestTimeoutError(ResponseError):
+class RequestTimeoutError(Exception):
     """
     Raised when a request times out.
 
@@ -92,11 +93,9 @@ class RequestTimeoutError(ResponseError):
     """
 
     def __init__(self, message: str, timeout: float) -> None:
-        # Create a fake response for consistency
+        super().__init__(message)
+        self.message = message
         self.timeout = timeout
-        # We'll handle this differently in the actual implementation
-        # For now, this is a placeholder
-        super().__init__(message, None)  # type: ignore
 
     def __str__(self) -> str:
         return f"{self.message} (timeout: {self.timeout}s)"

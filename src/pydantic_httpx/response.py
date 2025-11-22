@@ -51,15 +51,19 @@ class DataResponse(Generic[T]):
         if self._data is None:
             return None
         if hasattr(self._data, "model_dump"):
-            return self._data.model_dump()  # type: ignore[no-any-return]
+            result: dict[str, Any] = self._data.model_dump()
+            return result
         # Handle list of models
         if isinstance(self._data, list):
             return [
                 item.model_dump() if hasattr(item, "model_dump") else item
                 for item in self._data
             ]
-        # Handle dict or other types
-        return self._data  # type: ignore[return-value]
+        # Handle dict or other types - already a dict
+        if isinstance(self._data, dict):
+            return self._data
+        # For other types (shouldn't happen but type-safe)
+        return None
 
     @property
     def text(self) -> str:

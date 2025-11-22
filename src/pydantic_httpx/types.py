@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Protocol, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, Protocol, TypeAlias
 
 from pydantic import BaseModel
+from typing_extensions import TypeVar
 
 if TYPE_CHECKING:
     from pydantic_httpx.response import DataResponse
 
-T_co = TypeVar("T_co", covariant=True)
-T = TypeVar("T")
+# TypeVars for Endpoint type parameters
+T_co = TypeVar("T_co", covariant=True)  # Response type (covariant for Endpoint)
+T = TypeVar("T")  # Response type (invariant for ResponseEndpoint)
+# Request type with default=None (makes second parameter optional)
+T_Request = TypeVar("T_Request", covariant=True, default=None)
 
 
 class HTTPMethod(str, Enum):
@@ -41,20 +45,31 @@ QueryParams: TypeAlias = dict[str, Any]
 PathParams: TypeAlias = dict[str, Any]
 
 
-class Endpoint(Protocol[T_co]):
+class Endpoint(Protocol[T_co, T_Request]):
     """
     Protocol for endpoints that return data directly (auto-extracts response.data).
 
     This is the default endpoint type for simple cases where you only need
     the validated data, not the full HTTP response metadata.
 
+    Type Parameters:
+        T_co: Response type (covariant) - what the endpoint returns
+        T_Request: Optional request model type for automatic validation (default: None)
+            - Omit for endpoints without request validation (GET, DELETE, etc.)
+            - Specify Pydantic model for automatic request body validation
+
     Example:
-        >>> class UserResource(BaseResource):
-        >>>     get: Endpoint[User] = GET("/{id}")
+        >>> # GET endpoint - no request body (second param optional)
+        >>> get: Endpoint[User] = GET("/{id}")
+        >>>
+        >>> # POST endpoint with automatic request validation
+        >>> create: Endpoint[User, CreateUserRequest] = POST("")
         >>>
         >>> # Returns User directly (not DataResponse[User])
         >>> user = client.users.get(id=1)  # Type: User
-        >>> print(user.name)  # Direct access to data
+        >>> new_user = client.users.create(
+        >>>     json={"name": "John", "email": "john@example.com"}
+        >>> )
     """
 
     def __call__(self, **kwargs: Any) -> T_co:
@@ -65,21 +80,30 @@ class Endpoint(Protocol[T_co]):
             **kwargs: Path parameters, query parameters, or request body data.
 
         Returns:
-            T: The validated data (response.data is auto-extracted).
+            T_co: The validated data (response.data is auto-extracted).
         """
         ...
 
 
-class ResponseEndpoint(Protocol[T]):
+class ResponseEndpoint(Protocol[T, T_Request]):
     """
     Protocol for endpoints that return full DataResponse[T] wrapper.
 
     Use this when you need access to HTTP metadata like status codes,
     headers, cookies, or response timing information.
 
+    Type Parameters:
+        T: Response type - what the endpoint returns
+        T_Request: Optional request model type for automatic validation (default: None)
+            - Omit for endpoints without request validation (GET, DELETE, etc.)
+            - Specify Pydantic model for automatic request body validation
+
     Example:
-        >>> class UserResource(BaseResource):
-        >>>     get: ResponseEndpoint[User] = GET("/{id}")
+        >>> # GET endpoint - no request body (second param optional)
+        >>> get: ResponseEndpoint[User] = GET("/{id}")
+        >>>
+        >>> # POST endpoint with automatic request validation
+        >>> create: ResponseEndpoint[User, CreateUserRequest] = POST("")
         >>>
         >>> # Returns DataResponse[User] with full metadata
         >>> response = client.users.get(id=1)  # Type: DataResponse[User]
