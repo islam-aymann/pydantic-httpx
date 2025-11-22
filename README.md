@@ -403,13 +403,30 @@ user = client.users.get(id=5)  # ✅ Valid
 - **HTTPX integration**: Query params, headers, auth, cookies, timeouts, redirects
 - **URL encoding**: Automatic encoding of path parameters
 - **Error handling**: Rich exceptions with response context
-- **125 tests, 92% coverage**
 
-### 📋 Planned
-- File uploads and multipart forms
-- Union response types for different status codes
-- Retry logic with exponential backoff
-- Request/response logging and debugging
+### 📋 Roadmap
+
+**High Priority Features:**
+- 🔄 Retry logic with exponential backoff
+- 🎣 Global hooks/middleware system
+- 📡 Streaming support (SSE, file uploads/downloads)
+
+**Medium Priority:**
+- 🔐 Advanced OAuth2 flows with token refresh
+- 🔀 Union response types (different models per status code)
+- 📄 Pagination support (offset, cursor, page-based)
+- ⏱️ Rate limiting with automatic backoff
+- 📁 File uploads with multipart forms
+
+**Developer Experience:**
+- 📚 Documentation site (MkDocs/Sphinx)
+- 🎯 Example integrations (GitHub, Stripe, OpenAI APIs)
+- 🧪 Enhanced testing utilities
+
+**Long-term:**
+- GraphQL support
+- WebSocket endpoints
+- Plugin system
 
 ## Development
 
@@ -427,6 +444,9 @@ source .venv/bin/activate      # On Unix/macOS
 # Install with development dependencies
 make install-dev
 
+# (Optional) Install pre-commit hooks for automatic checks
+make pre-commit-install
+
 # Run all checks (lint, format, type-check, test)
 make check
 ```
@@ -434,19 +454,21 @@ make check
 ### Available Commands
 
 ```bash
-make help          # Show all available commands
-make install       # Install package
-make install-dev   # Install with dev dependencies
-make test          # Run tests
-make test-cov      # Run tests with coverage
-make lint          # Check code with ruff
-make lint-fix      # Auto-fix linting issues
-make format        # Format code with ruff
-make format-check  # Check formatting without changes
-make type-check    # Run mypy type checker
-make check         # Run all checks
-make clean         # Remove build artifacts
-make build         # Build distribution packages
+make help                 # Show all available commands
+make install              # Install package
+make install-dev          # Install with dev dependencies
+make test                 # Run tests
+make test-cov             # Run tests with coverage
+make lint                 # Check code with ruff
+make lint-fix             # Auto-fix linting issues
+make format               # Format code with ruff
+make format-check         # Check formatting without changes
+make type-check           # Run mypy type checker
+make check                # Run all checks
+make clean                # Remove build artifacts
+make build                # Build distribution packages
+make pre-commit-install   # Install pre-commit hooks
+make pre-commit-run       # Run pre-commit on all files
 ```
 
 ## License
