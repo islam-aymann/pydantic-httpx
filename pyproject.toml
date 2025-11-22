@@ -1,6 +1,6 @@
 [project]
 name = "pydantic-httpx"
-version = "0.1.0"
+version = "0.2.1"
 description = "Integration library for HTTPX with Pydantic models for type-safe HTTP client requests and responses"
 readme = "README.md"
 authors = [
@@ -10,6 +10,7 @@ requires-python = ">=3.10"
 dependencies = [
     "httpx>=0.27.0",
     "pydantic>=2.0.0",
+    "typing-extensions>=4.4.0",
 ]
 keywords = ["httpx", "pydantic", "http", "client", "api", "validation"]
 classifiers = [
@@ -66,7 +67,9 @@ select = [
     "C4", # flake8-comprehensions
     "UP", # pyupgrade
 ]
-ignore = []
+ignore = [
+    "UP035",  # Import from typing_extensions for better cross-version support
+]
 
 [tool.mypy]
 python_version = "3.10"

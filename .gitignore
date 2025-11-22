@@ -221,3 +221,6 @@ CLAUDE.md
 claude.md
 .github/copilot/
 .cursor/
+
+# Internal proposals (design documents)
+.proposals/

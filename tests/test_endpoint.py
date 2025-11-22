@@ -33,7 +33,6 @@ class TestEndpoint:
 
         assert endpoint.method == "GET"
         assert endpoint.path == "/users"
-        assert endpoint.request_model is None
         assert endpoint.query_model is None
         assert endpoint.timeout is None
         assert endpoint.headers == {}
@@ -63,12 +62,6 @@ class TestEndpoint:
         endpoint = Endpoint("GET", "")
 
         assert endpoint.path == "/"
-
-    def test_endpoint_with_request_model(self) -> None:
-        """Test endpoint with request body model."""
-        endpoint = Endpoint("POST", "/users", request_model=User)
-
-        assert endpoint.request_model is User
 
     def test_endpoint_with_query_model(self) -> None:
         """Test endpoint with query parameters model."""
@@ -163,32 +156,28 @@ class TestMethodSpecificEndpoints:
 
         assert endpoint.method == HTTPMethod.GET
         assert endpoint.path == "/users/{id}"
-        assert endpoint.request_model is None
         assert endpoint.query_model is None
 
     def test_post_endpoint(self) -> None:
         """Test POST endpoint class."""
-        endpoint = POST("/users", request_model=User)
+        endpoint = POST("/users")
 
         assert endpoint.method == HTTPMethod.POST
         assert endpoint.path == "/users"
-        assert endpoint.request_model is User
 
     def test_put_endpoint(self) -> None:
         """Test PUT endpoint class."""
-        endpoint = PUT("/users/{id}", request_model=User)
+        endpoint = PUT("/users/{id}")
 
         assert endpoint.method == HTTPMethod.PUT
         assert endpoint.path == "/users/{id}"
-        assert endpoint.request_model is User
 
     def test_patch_endpoint(self) -> None:
         """Test PATCH endpoint class."""
-        endpoint = PATCH("/users/{id}", request_model=User)
+        endpoint = PATCH("/users/{id}")
 
         assert endpoint.method == HTTPMethod.PATCH
         assert endpoint.path == "/users/{id}"
-        assert endpoint.request_model is User
 
     def test_delete_endpoint(self) -> None:
         """Test DELETE endpoint class."""

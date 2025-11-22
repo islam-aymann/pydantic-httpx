@@ -6,9 +6,16 @@
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A type-safe HTTP client library that combines the power of HTTPX with Pydantic validation. Build declarative API clients with automatic request/response validation, full IDE support, and clean Python syntax inspired by FastAPI.
+A type-safe HTTP client library that combines the power of HTTPX with Pydantic validation. Build declarative API clients with automatic response validation, full IDE support, and clean Python syntax inspired by FastAPI.
 
-**Status**: 🚧 Alpha (v0.1.0) - Not yet published to PyPI. Use via GitHub installation.
+**Status**: 🚧 Alpha (v0.2.1) - Not yet published to PyPI. Use via GitHub installation.
+
+**Recent Updates** (v0.2.1):
+- ✅ Automatic request validation from type hints (no manual parameter needed!)
+- ✅ Optional second type parameter using `typing_extensions` (Python 3.10+)
+- ✅ Improved editor support with TypedDict constructor syntax for configs
+- ✅ Enhanced type safety (43% reduction in type: ignore comments)
+- ✅ 94% test coverage with strict mypy configuration
 
 ## What It Does
 
@@ -39,7 +46,7 @@ A type-safe HTTP client library that combines the power of HTTPX with Pydantic v
 
 ```python
 from pydantic import BaseModel
-from pydantic_httpx import Client, Endpoint, GET, ClientConfig
+from pydantic_httpx import Client, ClientConfig, Endpoint, GET
 
 # Define your model
 class User(BaseModel):
@@ -49,7 +56,11 @@ class User(BaseModel):
 
 # Define your client
 class APIClient(Client):
-    client_config = ClientConfig(base_url="https://api.example.com")
+    # Constructor syntax provides full IDE autocomplete
+    client_config = ClientConfig(
+        base_url="https://api.example.com",
+        timeout=30.0,
+    )
 
     # Endpoint[T] returns data directly (no wrapper)
     get_user: Endpoint[User] = GET("/users/{id}")
@@ -66,7 +77,9 @@ print(user.name)  # Direct access to data
 from pydantic_httpx import ResponseEndpoint
 
 class APIClient(Client):
-    client_config = ClientConfig(base_url="https://api.example.com")
+    client_config = ClientConfig(
+        base_url="https://api.example.com",
+    )
 
     # ResponseEndpoint[T] returns DataResponse[T] with metadata
     get_user: ResponseEndpoint[User] = GET("/users/{id}")
@@ -82,11 +95,7 @@ print(response.headers)  # Access response headers
 ### Resource-Based Organization
 
 ```python
-from pydantic_httpx import BaseResource, POST, ResourceConfig
-
-class CreateUserRequest(BaseModel):
-    name: str
-    email: str
+from pydantic_httpx import BaseResource, ResourceConfig, POST
 
 # Group related endpoints in a resource
 class UserResource(BaseResource):
@@ -94,7 +103,7 @@ class UserResource(BaseResource):
 
     get: Endpoint[User] = GET("/{id}")
     list_all: Endpoint[list[User]] = GET("")
-    create: Endpoint[User] = POST("", request_model=CreateUserRequest)
+    create: Endpoint[User] = POST("")
 
 # Define your client with resources
 class APIClient(Client):
@@ -107,6 +116,72 @@ client = APIClient()
 user = client.users.get(id=1)
 users = client.users.list_all()
 new_user = client.users.create(json={"name": "John", "email": "john@example.com"})
+```
+
+### Automatic Request Validation
+
+Add a Pydantic model as the second type parameter for automatic request body validation:
+
+```python
+from pydantic import BaseModel
+
+class CreateUserRequest(BaseModel):
+    name: str
+    email: str
+
+class UserResource(BaseResource):
+    resource_config = ResourceConfig(prefix="/users")
+
+    # Second type parameter enables automatic request validation
+    create: Endpoint[User, CreateUserRequest] = POST("")
+
+# Use it - request body is automatically validated!
+client = APIClient()
+new_user = client.users.create(json={"name": "John", "email": "john@example.com"})  # ✅ Valid
+# client.users.create(json={"name": "John"})  # ❌ Raises ValidationError (missing email)
+```
+
+**Key points:**
+- First type parameter: Response type (what the endpoint returns)
+- Second type parameter (optional): Request model for automatic validation
+- Omit second parameter for GET/DELETE endpoints (no request body)
+- Request validation happens automatically before sending the request
+
+### Configuration Flexibility
+
+All examples in this documentation use the **constructor syntax** (recommended):
+
+```python
+from pydantic_httpx import ClientConfig, ResourceConfig
+
+# Constructor syntax - full IDE autocomplete and type checking!
+class APIClient(Client):
+    client_config = ClientConfig(
+        base_url="https://api.example.com",
+        timeout=30.0,
+        headers={"User-Agent": "my-app/1.0"},
+    )
+
+class UserResource(BaseResource):
+    resource_config = ResourceConfig(
+        prefix="/users",
+        timeout=60.0,
+    )
+```
+
+Alternative styles are also supported (for compatibility):
+
+```python
+# Dict literal with type hint (partial autocomplete)
+class APIClient(Client):
+    client_config: ClientConfig = {
+        "base_url": "https://api.example.com",
+        "timeout": 30.0,
+    }
+
+# Plain dict (no autocomplete)
+class APIClient(Client):
+    client_config = {"base_url": "https://api.example.com"}
 ```
 
 ## Async Support
@@ -250,6 +325,7 @@ dependencies = [
 - Python 3.10+
 - httpx >= 0.27.0
 - pydantic >= 2.0.0
+- typing-extensions >= 4.4.0 (for optional type parameters)
 
 ## API Design
 
@@ -257,14 +333,18 @@ dependencies = [
 
 This library provides two ways to define endpoints, inspired by FastAPI's approach:
 
-1. **`Endpoint[T]`** - Returns data directly (most common)
+1. **`Endpoint[T, TRequest]`** - Returns data directly (most common)
    - Automatically extracts `response.data`
    - Cleaner code for typical use cases
    - Type hint: `Endpoint[User]` → returns `User`
+   - With request validation: `Endpoint[User, CreateUserRequest]`
 
-2. **`ResponseEndpoint[T]`** - Returns full response wrapper
+2. **`ResponseEndpoint[T, TRequest]`** - Returns full response wrapper
    - Access to HTTP metadata (status, headers, cookies, timing)
    - Type hint: `ResponseEndpoint[User]` → returns `DataResponse[User]`
+   - With request validation: `ResponseEndpoint[User, CreateUserRequest]`
+
+**Note**: The second type parameter is optional (defaults to `None`). Only specify it when you need automatic request body validation.
 
 ### Flexible Organization
 

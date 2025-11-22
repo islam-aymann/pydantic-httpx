@@ -23,13 +23,6 @@ class User(BaseModel):
     email: str
 
 
-class CreateUserRequest(BaseModel):
-    """Request model for creating a user."""
-
-    name: str
-    email: str
-
-
 class UserResource(BaseResource):
     """Resource for testing async features."""
 
@@ -37,7 +30,7 @@ class UserResource(BaseResource):
 
     get: ResponseEndpoint[User] = GET("/{id}")
     list_all: ResponseEndpoint[list[User]] = GET("")
-    create: ResponseEndpoint[User] = POST("", request_model=CreateUserRequest)
+    create: ResponseEndpoint[User] = POST("")
 
 
 class AsyncAPIClient(AsyncClient):

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any, TypeVar, get_origin, get_type_hints, overload
+from typing import TYPE_CHECKING, Any, overload
+
+from typing_extensions import TypeVar, get_args, get_origin, get_type_hints
 
 from pydantic_httpx.config import ResourceConfig
 from pydantic_httpx.endpoint import BaseEndpoint
@@ -36,6 +38,7 @@ class EndpointDescriptor:
         endpoint: BaseEndpoint,
         response_type: type,
         return_data_only: bool = True,
+        request_model: type | None = None,
     ) -> None:
         """
         Initialize endpoint descriptor.
@@ -46,14 +49,18 @@ class EndpointDescriptor:
             response_type: Expected response type (Endpoint[T] or ResponseEndpoint[T]).
             return_data_only: If True, return data only (Endpoint[T]).
                 If False, return full DataResponse[T] (ResponseEndpoint[T]).
+            request_model: Optional Pydantic model for request validation.
         """
         self.name = name
         self.endpoint = endpoint
         self.response_type = response_type
         self.return_data_only = return_data_only
+        self.request_model = request_model
 
     def __set_name__(self, owner: type, name: str) -> None:
-        """Called when the descriptor is assigned to a class attribute."""
+        """
+        Called when the descriptor is assigned to a class attribute.
+        """
         self.name = name
 
     def __call__(self, **kwargs: Any) -> DataResponse[Any]:
@@ -119,8 +126,8 @@ class EndpointDescriptor:
         if hasattr(instance, "_client"):
             # This is a Resource instance
             client = instance._client
-            prefix = getattr(instance, "resource_config", None)
-            prefix = prefix.prefix if prefix else ""
+            resource_config = getattr(instance, "resource_config", {})
+            prefix = resource_config.get("prefix", "") if resource_config else ""
         else:
             # This is a Client instance (direct endpoint on client)
             client = instance
@@ -177,6 +184,7 @@ class EndpointDescriptor:
                         path=full_path,
                         response_type=self.response_type,
                         endpoint=self.endpoint,
+                        request_model=self.request_model,
                         **non_path_params,
                     )
                     return result  # type: ignore[no-any-return]
@@ -272,6 +280,7 @@ class EndpointDescriptor:
                         path=full_path,
                         response_type=self.response_type,
                         endpoint=self.endpoint,
+                        request_model=self.request_model,
                         **non_path_params,
                     )
                     return result  # type: ignore[no-any-return]
@@ -337,7 +346,7 @@ class BaseResource:
         >>>     create: Endpoint[User] = POST("", request_model=User)
     """
 
-    resource_config: ResourceConfig = ResourceConfig()
+    resource_config: ResourceConfig = {}
 
     def __init__(self, client: Client | AsyncClient | None = None) -> None:
         """
@@ -362,6 +371,25 @@ class BaseResource:
         - get: ResponseEndpoint[User] = GET("/{id}")  # Returns DataResponse[User]
         """
         super().__init_subclass__()
+
+        # Handle resource_config - ensure it's a dict and apply defaults
+        if not hasattr(cls, "resource_config"):
+            cls.resource_config = {}
+        elif cls.resource_config is None:
+            cls.resource_config = {}
+
+        # Apply defaults to resource_config
+        config_defaults: ResourceConfig = {
+            "prefix": "",
+            "timeout": None,
+            "headers": {},
+            "validate_response": None,
+            "raise_on_error": None,
+            "description": None,
+            "tags": [],
+        }
+        # Merge user config over defaults
+        cls.resource_config = {**config_defaults, **cls.resource_config}
 
         # Use get_type_hints to properly resolve forward references and generics
         try:
@@ -389,11 +417,19 @@ class BaseResource:
                 if origin_name == "ResponseEndpoint":
                     return_data_only = False
 
+            # Extract type parameters: [ResponseType, RequestType]
+            # The annotation can be Endpoint[User] or Endpoint[User, CreateUserRequest]
+            args = get_args(annotation)
+            request_model = None
+            if len(args) > 1 and args[1] is not type(None):
+                # Second parameter is the request model (if not None)
+                request_model = args[1]
+
             # The annotation itself is the response type wrapper
             response_type = annotation
 
             # Create and set the descriptor
             descriptor = EndpointDescriptor(
-                attr_name, endpoint, response_type, return_data_only
+                attr_name, endpoint, response_type, return_data_only, request_model
             )
             setattr(cls, attr_name, descriptor)

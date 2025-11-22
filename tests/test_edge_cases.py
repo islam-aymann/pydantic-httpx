@@ -73,14 +73,14 @@ class TestGetTypeHintsFallback:
 
 
 class TestJsonBodyWithoutModel:
-    """Test passing json body without request_model validation."""
+    """Test passing json body without validation."""
 
     def test_post_with_raw_json_no_model(self, httpx_mock: HTTPXMock):
-        """Test POST with raw JSON dict when no request_model is specified."""
+        """Test POST with raw JSON dict."""
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            create_user: Endpoint[User] = POST("/users")  # No request_model
+            create_user: Endpoint[User] = POST("/users")
 
         httpx_mock.add_response(json={"id": 1, "name": "Bob"})
 
@@ -96,11 +96,11 @@ class TestJsonBodyWithoutModel:
         assert request.method == "POST"
 
     def test_async_post_with_raw_json_no_model(self, httpx_mock: HTTPXMock):
-        """Test async POST with raw JSON dict when no request_model is specified."""
+        """Test async POST with raw JSON dict."""
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            create_user: Endpoint[User] = POST("/users")  # No request_model
+            create_user: Endpoint[User] = POST("/users")
 
         httpx_mock.add_response(json={"id": 2, "name": "Charlie"})
 

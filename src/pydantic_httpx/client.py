@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, TypeVar, get_args, get_origin, get_type_hints
+from typing import Any
 
 import httpx
 from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
+from typing_extensions import TypeVar, get_args, get_origin, get_type_hints
 
 from pydantic_httpx.config import ClientConfig
 from pydantic_httpx.endpoint import BaseEndpoint
@@ -56,17 +57,19 @@ class Client:
         >>> user = client.users.get(id=1)  # Returns User directly
     """
 
-    client_config: ClientConfig = ClientConfig()
+    client_config: ClientConfig = {}
     _is_async_client: bool = False
+    _resource_classes: dict[str, type[BaseResource]]
+    _endpoint_info: dict[str, tuple[BaseEndpoint, type[Any], bool]]
 
     def __init__(self) -> None:
         """Initialize the client and bind resources."""
         # Create httpx client
         self._httpx_client = httpx.Client(
-            base_url=self.client_config.base_url,
-            timeout=self.client_config.timeout,
-            headers=self.client_config.headers,
-            follow_redirects=self.client_config.follow_redirects,
+            base_url=self.client_config["base_url"],
+            timeout=self.client_config["timeout"],
+            headers=self.client_config["headers"],
+            follow_redirects=self.client_config["follow_redirects"],
         )
 
         # Extract and store validators for this client
@@ -78,6 +81,31 @@ class Client:
     def __init_subclass__(cls) -> None:
         """Called when a subclass is created to parse resources and endpoints."""
         super().__init_subclass__()
+
+        # Handle client_config - ensure it's a dict and apply defaults
+        if not hasattr(cls, "client_config"):
+            cls.client_config = {}
+        elif cls.client_config is None:
+            cls.client_config = {}
+
+        # Apply defaults to client_config
+        config_defaults: ClientConfig = {
+            "base_url": "",
+            "timeout": 30.0,
+            "headers": {},
+            "params": {},
+            "follow_redirects": True,
+            "max_redirects": 20,
+            "verify": True,
+            "cert": None,
+            "http2": False,
+            "proxies": {},
+            "raise_on_error": True,
+            "validate_response": True,
+            "auth": None,
+        }
+        # Merge user config over defaults
+        cls.client_config = {**config_defaults, **cls.client_config}
 
         # Use get_type_hints to properly resolve forward references and generics
         try:
@@ -91,8 +119,8 @@ class Client:
             if isinstance(annotation, type) and issubclass(annotation, BaseResource):
                 # Store the resource class for later initialization
                 if not hasattr(cls, "_resource_classes"):
-                    cls._resource_classes = {}  # type: ignore[attr-defined]
-                cls._resource_classes[attr_name] = annotation  # type: ignore[attr-defined]
+                    cls._resource_classes = {}
+                cls._resource_classes[attr_name] = annotation
                 continue
 
             # Check if it's a direct endpoint definition on the client
@@ -129,6 +157,7 @@ class Client:
         path: str,
         response_type: type,
         endpoint: BaseEndpoint,
+        request_model: type | None = None,
         **kwargs: Any,
     ) -> DataResponse[Any]:
         """
@@ -139,6 +168,7 @@ class Client:
             path: Full request path.
             response_type: Expected response type (DataResponse[T]).
             endpoint: BaseEndpoint metadata.
+            request_model: Optional Pydantic model for request validation.
             **kwargs: Request parameters (query params, body, etc.).
 
         Returns:
@@ -154,10 +184,10 @@ class Client:
             inner_type = self._extract_response_model(response_type)
 
             # Merge endpoint headers with config headers
-            headers = {**self.client_config.headers, **endpoint.headers}
+            headers = {**self.client_config["headers"], **endpoint.headers}
 
             # Determine timeout (endpoint-specific or client default)
-            timeout = endpoint.timeout or self.client_config.timeout
+            timeout = endpoint.timeout or self.client_config["timeout"]
 
             # Build request parameters
             request_params: dict[str, Any] = {"headers": headers, "timeout": timeout}
@@ -174,13 +204,31 @@ class Client:
             if endpoint.follow_redirects is not None:
                 request_params["follow_redirects"] = endpoint.follow_redirects
 
-            # Handle request body
-            if endpoint.request_model and "json" in kwargs:
+            # Convert method to string early (needed for error handling)
+            method_str = method.value if isinstance(method, HTTPMethod) else method
+
+            # Handle request body with optional validation
+            if "json" in kwargs:
+                json_data = kwargs["json"]
                 # Validate request body if model provided
-                request_data = endpoint.request_model(**kwargs["json"])
-                request_params["json"] = request_data.model_dump()
-            elif "json" in kwargs:
-                request_params["json"] = kwargs["json"]
+                if request_model is not None:
+                    try:
+                        validated_request = request_model(**json_data)
+                        request_params["json"] = validated_request.model_dump()
+                    except PydanticValidationError as e:
+                        # Create a dummy response for ValidationError
+                        dummy_response = httpx.Response(
+                            status_code=400,
+                            request=httpx.Request(method_str, path),
+                        )
+                        raise ValidationError(
+                            "Request validation failed",
+                            dummy_response,
+                            e.errors(),
+                            raw_data=json_data,
+                        ) from e
+                else:
+                    request_params["json"] = json_data
 
             # Handle query parameters (exclude 'json' since it's for body)
             query_kwargs = {k: v for k, v in kwargs.items() if k != "json"}
@@ -192,12 +240,11 @@ class Client:
                 # Pass remaining kwargs as query params
                 request_params["params"] = query_kwargs
 
-            # Execute HTTP request (convert enum to string if needed)
-            method_str = method.value if isinstance(method, HTTPMethod) else method
+            # Execute HTTP request
             response = self._httpx_client.request(method_str, path, **request_params)
 
             # Check for HTTP errors if configured
-            if self.client_config.raise_on_error and response.is_error:
+            if self.client_config["raise_on_error"] and response.is_error:
                 raise HTTPError(response)
 
             # Validate and parse response
@@ -243,6 +290,7 @@ class Client:
         if model is type(None) or response.status_code == 204:
             return None
 
+        data = None
         try:
             # Parse JSON response
             data = response.json()
@@ -269,7 +317,7 @@ class Client:
             raise ValidationError(
                 "Response validation failed",
                 response,
-                e.errors(),  # type: ignore[arg-type]
+                e.errors(),
                 raw_data=data,
             ) from e
         except Exception as e:

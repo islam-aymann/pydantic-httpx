@@ -27,7 +27,6 @@ class BaseEndpoint:
     Attributes:
         method: HTTP method enum.
         path: URL path template with optional parameters (e.g., "/{id}").
-        request_model: Optional Pydantic model for request body validation.
         query_model: Optional Pydantic model for query parameters.
         timeout: Optional request-specific timeout override.
         headers: Optional request-specific headers.
@@ -38,7 +37,6 @@ class BaseEndpoint:
 
     method: HTTPMethod
     path: str
-    request_model: type[BaseModel] | None = None
     query_model: type[BaseModel] | None = None
     timeout: float | None = None
     headers: dict[str, str] = field(default_factory=dict)
@@ -173,7 +171,6 @@ class GET(BaseEndpoint):
     def __init__(
         self,
         path: str,
-        request_model: type[BaseModel] | None = None,
         query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
@@ -184,7 +181,6 @@ class GET(BaseEndpoint):
         super().__init__(
             method=HTTPMethod.GET,
             path=path,
-            request_model=request_model,
             query_model=query_model,
             timeout=timeout,
             headers=headers or {},
@@ -200,13 +196,12 @@ class POST(BaseEndpoint):
     POST endpoint for creating resources.
 
     Example:
-        >>> create: DataResponse[User] = POST("", request_model=CreateUserRequest)
+        >>> create: DataResponse[User] = POST("")
     """
 
     def __init__(
         self,
         path: str,
-        request_model: type[BaseModel] | None = None,
         query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
@@ -217,7 +212,6 @@ class POST(BaseEndpoint):
         super().__init__(
             method=HTTPMethod.POST,
             path=path,
-            request_model=request_model,
             query_model=query_model,
             timeout=timeout,
             headers=headers or {},
@@ -233,13 +227,12 @@ class PUT(BaseEndpoint):
     PUT endpoint for updating/replacing resources.
 
     Example:
-        >>> update: DataResponse[User] = PUT("/{id}", request_model=User)
+        >>> update: DataResponse[User] = PUT("/{id}")
     """
 
     def __init__(
         self,
         path: str,
-        request_model: type[BaseModel] | None = None,
         query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
@@ -250,7 +243,6 @@ class PUT(BaseEndpoint):
         super().__init__(
             method=HTTPMethod.PUT,
             path=path,
-            request_model=request_model,
             query_model=query_model,
             timeout=timeout,
             headers=headers or {},
@@ -266,13 +258,12 @@ class PATCH(BaseEndpoint):
     PATCH endpoint for partially updating resources.
 
     Example:
-        >>> partial_update: DataResponse[User] = PATCH("/{id}", request_model=UserPatch)
+        >>> partial_update: DataResponse[User] = PATCH("/{id}")
     """
 
     def __init__(
         self,
         path: str,
-        request_model: type[BaseModel] | None = None,
         query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
@@ -283,7 +274,6 @@ class PATCH(BaseEndpoint):
         super().__init__(
             method=HTTPMethod.PATCH,
             path=path,
-            request_model=request_model,
             query_model=query_model,
             timeout=timeout,
             headers=headers or {},
@@ -305,7 +295,6 @@ class DELETE(BaseEndpoint):
     def __init__(
         self,
         path: str,
-        request_model: type[BaseModel] | None = None,
         query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
@@ -316,7 +305,6 @@ class DELETE(BaseEndpoint):
         super().__init__(
             method=HTTPMethod.DELETE,
             path=path,
-            request_model=request_model,
             query_model=query_model,
             timeout=timeout,
             headers=headers or {},
@@ -338,7 +326,6 @@ class HEAD(BaseEndpoint):
     def __init__(
         self,
         path: str,
-        request_model: type[BaseModel] | None = None,
         query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
@@ -349,7 +336,6 @@ class HEAD(BaseEndpoint):
         super().__init__(
             method=HTTPMethod.HEAD,
             path=path,
-            request_model=request_model,
             query_model=query_model,
             timeout=timeout,
             headers=headers or {},
@@ -371,7 +357,6 @@ class OPTIONS(BaseEndpoint):
     def __init__(
         self,
         path: str,
-        request_model: type[BaseModel] | None = None,
         query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
@@ -382,7 +367,6 @@ class OPTIONS(BaseEndpoint):
         super().__init__(
             method=HTTPMethod.OPTIONS,
             path=path,
-            request_model=request_model,
             query_model=query_model,
             timeout=timeout,
             headers=headers or {},
