@@ -42,9 +42,10 @@ class Client:
         _is_async_client: Class-level flag indicating this is a sync client.
 
     Example:
+        >>> from typing import Annotated
         >>> from pydantic import BaseModel
         >>> from pydantic_httpx import (
-        >>>     Client, BaseResource, ClientConfig, GET, Endpoint
+        >>>     Client, BaseResource, ClientConfig, GET, Endpoint, ResourceConfig
         >>> )
         >>>
         >>> class User(BaseModel):
@@ -53,7 +54,7 @@ class Client:
         >>>
         >>> class UserResource(BaseResource):
         >>>     resource_config = ResourceConfig(prefix="/users")
-        >>>     get: Endpoint[User] = GET("/{id}")
+        >>>     get: Annotated[Endpoint[User], GET("/{id}")]
         >>>
         >>> class APIClient(Client):
         >>>     client_config = ClientConfig(base_url="https://api.example.com")
@@ -66,7 +67,6 @@ class Client:
     client_config: ClientConfig = {}
     _is_async_client: bool = False
     _resource_classes: dict[str, type[BaseResource]]
-    _endpoint_info: dict[str, tuple[BaseEndpoint, type[Any], bool]]
 
     def __init__(self) -> None:
         """Initialize the client and bind resources."""

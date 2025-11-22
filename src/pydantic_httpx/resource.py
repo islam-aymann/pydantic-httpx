@@ -330,6 +330,7 @@ class BaseResource:
         resource_config: Configuration for the resource (prefix, timeout, headers).
 
     Example:
+        >>> from typing import Annotated
         >>> from pydantic import BaseModel
         >>> from pydantic_httpx import (
         >>>     BaseResource, GET, POST, Endpoint, ResourceConfig
@@ -342,9 +343,9 @@ class BaseResource:
         >>> class UserResource(BaseResource):
         >>>     resource_config = ResourceConfig(prefix="/users")
         >>>
-        >>>     get: Endpoint[User] = GET("/{id}")
-        >>>     list: Endpoint[list[User]] = GET("")
-        >>>     create: Endpoint[User] = POST("", request_model=User)
+        >>>     get: Annotated[Endpoint[User], GET("/{id}")]
+        >>>     list: Annotated[Endpoint[list[User]], GET("")]
+        >>>     create: Annotated[Endpoint[User, User], POST("")]
     """
 
     resource_config: ResourceConfig = {}
