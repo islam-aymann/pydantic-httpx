@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, overload
 
 from typing_extensions import TypeVar, get_args, get_origin, get_type_hints
 
+from pydantic_httpx._defaults import RESOURCE_CONFIG_DEFAULTS
 from pydantic_httpx.config import ResourceConfig
 from pydantic_httpx.endpoint import BaseEndpoint
 from pydantic_httpx.response import DataResponse
@@ -372,63 +373,37 @@ class BaseResource:
         """
         super().__init_subclass__()
 
-        # Handle resource_config - ensure it's a dict and apply defaults
-        if not hasattr(cls, "resource_config"):
-            cls.resource_config = {}
-        elif cls.resource_config is None:
+        if not hasattr(cls, "resource_config") or cls.resource_config is None:
             cls.resource_config = {}
 
-        # Apply defaults to resource_config
-        config_defaults: ResourceConfig = {
-            "prefix": "",
-            "timeout": None,
-            "headers": {},
-            "validate_response": None,
-            "raise_on_error": None,
-            "description": None,
-            "tags": [],
-        }
-        # Merge user config over defaults
-        cls.resource_config = {**config_defaults, **cls.resource_config}
+        cls.resource_config = {**RESOURCE_CONFIG_DEFAULTS, **cls.resource_config}
 
-        # Use get_type_hints to properly resolve forward references and generics
         try:
             type_hints = get_type_hints(cls, include_extras=True)
         except Exception:
-            # Fallback to raw annotations if get_type_hints fails
             type_hints = getattr(cls, "__annotations__", {})
 
         for attr_name, annotation in type_hints.items():
-            # Get the actual value assigned to this attribute
             endpoint = getattr(cls, attr_name, None)
 
-            # Skip if not a BaseEndpoint instance (includes all endpoint types)
             if not isinstance(endpoint, BaseEndpoint):
                 continue
 
-            # Detect if this is Endpoint[T] or ResponseEndpoint[T]
-            # by checking the __name__ of the Protocol origin
             origin = get_origin(annotation)
-            return_data_only = True  # Default to Endpoint[T] behavior
+            return_data_only = True
 
-            # Check if annotation is ResponseEndpoint[T]
             if origin is not None:
                 origin_name = getattr(origin, "__name__", "")
                 if origin_name == "ResponseEndpoint":
                     return_data_only = False
 
-            # Extract type parameters: [ResponseType, RequestType]
-            # The annotation can be Endpoint[User] or Endpoint[User, CreateUserRequest]
             args = get_args(annotation)
             request_model = None
             if len(args) > 1 and args[1] is not type(None):
-                # Second parameter is the request model (if not None)
                 request_model = args[1]
 
-            # The annotation itself is the response type wrapper
             response_type = annotation
 
-            # Create and set the descriptor
             descriptor = EndpointDescriptor(
                 attr_name, endpoint, response_type, return_data_only, request_model
             )

@@ -13,6 +13,7 @@ help:
 	@echo "  make lint-fix             Run linter and auto-fix issues"
 	@echo "  make format               Format code with ruff"
 	@echo "  make format-check         Check code formatting without changes"
+	@echo "  make ruff         		   Format code and fix linting issues with ruff"
 	@echo "  make type-check           Run type checker (mypy)"
 	@echo "  make check                Run all checks (lint, format-check, type-check, test)"
 	@echo "  make build                Build distribution packages"
@@ -70,6 +71,8 @@ format:
 
 format-check:
 	ruff format --check .
+
+ruff: lint-fix format
 
 # Type checking
 type-check:
