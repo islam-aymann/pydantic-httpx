@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
-from typing_extensions import TypeVar, get_origin, get_type_hints
+from typing_extensions import TypeVar, get_args, get_origin, get_type_hints
 
 from pydantic_httpx._defaults import CLIENT_CONFIG_DEFAULTS
 from pydantic_httpx._request_builder import (
@@ -33,18 +33,18 @@ class Client:
     This client wraps httpx.Client and provides automatic request/response
     validation using Pydantic models defined in resource classes.
 
-    Supports two endpoint types:
-    - Endpoint[T]: Returns data only (auto-extracts response.data)
-    - ResponseEndpoint[T]: Returns full DataResponse[T] wrapper
+    All endpoints use Endpoint[T] which returns DataResponse[T] wrapper.
+    Access the validated data using response.data property.
 
     Attributes:
         client_config: Configuration for the HTTP client.
         _is_async_client: Class-level flag indicating this is a sync client.
 
     Example:
+        >>> from typing import Annotated
         >>> from pydantic import BaseModel
         >>> from pydantic_httpx import (
-        >>>     Client, BaseResource, ClientConfig, GET, Endpoint
+        >>>     Client, BaseResource, ClientConfig, GET, Endpoint, ResourceConfig
         >>> )
         >>>
         >>> class User(BaseModel):
@@ -53,7 +53,7 @@ class Client:
         >>>
         >>> class UserResource(BaseResource):
         >>>     resource_config = ResourceConfig(prefix="/users")
-        >>>     get: Endpoint[User] = GET("/{id}")
+        >>>     get: Annotated[Endpoint[User], GET("/{id}")]
         >>>
         >>> class APIClient(Client):
         >>>     client_config = ClientConfig(base_url="https://api.example.com")
@@ -66,7 +66,6 @@ class Client:
     client_config: ClientConfig = {}
     _is_async_client: bool = False
     _resource_classes: dict[str, type[BaseResource]]
-    _endpoint_info: dict[str, tuple[BaseEndpoint, type[Any], bool]]
 
     def __init__(self) -> None:
         """Initialize the client and bind resources."""
@@ -105,20 +104,44 @@ class Client:
                 cls._resource_classes[attr_name] = annotation
                 continue
 
-            endpoint = getattr(cls, attr_name, None)
-            if isinstance(endpoint, BaseEndpoint):
-                origin = get_origin(annotation)
-                return_data_only = True
+            origin = get_origin(annotation)
 
-                if origin is not None:
-                    origin_name = getattr(origin, "__name__", "")
-                    if origin_name == "ResponseEndpoint":
-                        return_data_only = False
+            if origin is None:
+                continue
 
-                descriptor = EndpointDescriptor(
-                    attr_name, endpoint, annotation, return_data_only
-                )
-                setattr(cls, attr_name, descriptor)
+            origin_name = getattr(origin, "__name__", "")
+            if origin_name != "Annotated":
+                continue
+
+            args = get_args(annotation)
+            if not args or len(args) < 2:
+                continue
+
+            endpoint_protocol = args[0]
+            metadata = args[1:]
+
+            endpoint_spec = None
+            for item in metadata:
+                if isinstance(item, BaseEndpoint):
+                    endpoint_spec = item
+                    break
+
+            if endpoint_spec is None:
+                continue
+
+            protocol_args = get_args(endpoint_protocol)
+            request_model = None
+            if len(protocol_args) > 1 and protocol_args[1] is not type(None):
+                request_model = protocol_args[1]
+
+            descriptor = EndpointDescriptor(
+                attr_name,
+                endpoint_spec,
+                endpoint_protocol,
+                request_model,
+            )
+            setattr(cls, attr_name, descriptor)
+            descriptor.__set_name__(cls, attr_name)
 
     def _init_resources(self) -> None:
         """Initialize resource instances and bind them to this client."""

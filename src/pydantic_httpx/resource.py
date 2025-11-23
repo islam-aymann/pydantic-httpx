@@ -38,7 +38,6 @@ class EndpointDescriptor:
         name: str,
         endpoint: BaseEndpoint,
         response_type: type,
-        return_data_only: bool = True,
         request_model: type | None = None,
     ) -> None:
         """
@@ -47,15 +46,12 @@ class EndpointDescriptor:
         Args:
             name: The attribute name of the endpoint.
             endpoint: The BaseEndpoint metadata.
-            response_type: Expected response type (Endpoint[T] or ResponseEndpoint[T]).
-            return_data_only: If True, return data only (Endpoint[T]).
-                If False, return full DataResponse[T] (ResponseEndpoint[T]).
+            response_type: Expected response type (Endpoint[T]).
             request_model: Optional Pydantic model for request validation.
         """
         self.name = name
         self.endpoint = endpoint
         self.response_type = response_type
-        self.return_data_only = return_data_only
         self.request_model = request_model
 
     def __set_name__(self, owner: type, name: str) -> None:
@@ -222,12 +218,7 @@ class EndpointDescriptor:
                         after_validators, response, instance
                     )
 
-                # Return data only if Endpoint[T], else return full DataResponse[T]
-                if self.return_data_only:
-                    # If after validators returned custom data, use it
-                    if isinstance(result, DataResponse):
-                        return result.data  # type: ignore[no-any-return]
-                    return result  # type: ignore[no-any-return]
+                # Always return full DataResponse[T]
                 return result if isinstance(result, DataResponse) else response
 
             return async_endpoint_method
@@ -308,12 +299,7 @@ class EndpointDescriptor:
                         after_validators, response, instance
                     )
 
-                # Return data only if Endpoint[T], else return full DataResponse[T]
-                if self.return_data_only:
-                    # If after validators returned custom data, use it
-                    if isinstance(result, DataResponse):
-                        return result.data  # type: ignore[no-any-return]
-                    return result  # type: ignore[no-any-return]
+                # Always return full DataResponse[T]
                 return result if isinstance(result, DataResponse) else response
 
             return sync_endpoint_method
@@ -330,6 +316,7 @@ class BaseResource:
         resource_config: Configuration for the resource (prefix, timeout, headers).
 
     Example:
+        >>> from typing import Annotated
         >>> from pydantic import BaseModel
         >>> from pydantic_httpx import (
         >>>     BaseResource, GET, POST, Endpoint, ResourceConfig
@@ -342,9 +329,9 @@ class BaseResource:
         >>> class UserResource(BaseResource):
         >>>     resource_config = ResourceConfig(prefix="/users")
         >>>
-        >>>     get: Endpoint[User] = GET("/{id}")
-        >>>     list: Endpoint[list[User]] = GET("")
-        >>>     create: Endpoint[User] = POST("", request_model=User)
+        >>>     get: Annotated[Endpoint[User], GET("/{id}")]
+        >>>     list: Annotated[Endpoint[list[User]], GET("")]
+        >>>     create: Annotated[Endpoint[User, User], POST("")]
     """
 
     resource_config: ResourceConfig = {}
@@ -368,8 +355,8 @@ class BaseResource:
         EndpointDescriptor instances.
 
         Supports:
-        - get: Endpoint[User] = GET("/{id}")  # Returns User
-        - get: ResponseEndpoint[User] = GET("/{id}")  # Returns DataResponse[User]
+        - get: Annotated[Endpoint[User], GET("/{id}")]
+               # Returns DataResponse[User]
         """
         super().__init_subclass__()
 
@@ -384,27 +371,40 @@ class BaseResource:
             type_hints = getattr(cls, "__annotations__", {})
 
         for attr_name, annotation in type_hints.items():
-            endpoint = getattr(cls, attr_name, None)
+            origin = get_origin(annotation)
 
-            if not isinstance(endpoint, BaseEndpoint):
+            if origin is None:
                 continue
 
-            origin = get_origin(annotation)
-            return_data_only = True
-
-            if origin is not None:
-                origin_name = getattr(origin, "__name__", "")
-                if origin_name == "ResponseEndpoint":
-                    return_data_only = False
+            origin_name = getattr(origin, "__name__", "")
+            if origin_name != "Annotated":
+                continue
 
             args = get_args(annotation)
-            request_model = None
-            if len(args) > 1 and args[1] is not type(None):
-                request_model = args[1]
+            if not args or len(args) < 2:
+                continue
 
-            response_type = annotation
+            endpoint_protocol = args[0]
+            metadata = args[1:]
+
+            endpoint_spec = None
+            for item in metadata:
+                if isinstance(item, BaseEndpoint):
+                    endpoint_spec = item
+                    break
+
+            if endpoint_spec is None:
+                continue
+
+            protocol_args = get_args(endpoint_protocol)
+            request_model = None
+            if len(protocol_args) > 1 and protocol_args[1] is not type(None):
+                request_model = protocol_args[1]
+
+            response_type = endpoint_protocol
 
             descriptor = EndpointDescriptor(
-                attr_name, endpoint, response_type, return_data_only, request_model
+                attr_name, endpoint_spec, response_type, request_model
             )
             setattr(cls, attr_name, descriptor)
+            descriptor.__set_name__(cls, attr_name)

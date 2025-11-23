@@ -1,6 +1,6 @@
 """Integration library for HTTPX with Pydantic models."""
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 
 from pydantic_httpx.async_client import AsyncClient
 from pydantic_httpx.client import Client
@@ -25,8 +25,7 @@ from pydantic_httpx.exceptions import (
 )
 from pydantic_httpx.resource import BaseResource
 from pydantic_httpx.response import DataResponse
-from pydantic_httpx.types import VALID_HTTP_METHODS, HTTPMethod, ResponseEndpoint
-from pydantic_httpx.types import Endpoint as EndpointProtocol
+from pydantic_httpx.types import VALID_HTTP_METHODS, Endpoint, HTTPMethod
 from pydantic_httpx.validators import endpoint_validator
 
 __all__ = [
@@ -48,7 +47,6 @@ __all__ = [
     "BaseResource",
     # Endpoint Types (Protocol)
     "Endpoint",  # Protocol for Endpoint[T]
-    "ResponseEndpoint",  # Protocol for ResponseEndpoint[T]
     # Validators
     "endpoint_validator",
     # Endpoint Classes
@@ -65,6 +63,3 @@ __all__ = [
     "HTTPMethod",
     "VALID_HTTP_METHODS",
 ]
-
-# Re-export Endpoint as the type annotation (Protocol)
-Endpoint = EndpointProtocol
