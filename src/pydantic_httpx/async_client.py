@@ -135,14 +135,6 @@ class AsyncClient:
             if endpoint_spec is None:
                 continue
 
-            protocol_origin = get_origin(endpoint_protocol)
-            return_data_only = True
-
-            if protocol_origin is not None:
-                protocol_name = getattr(protocol_origin, "__name__", "")
-                if protocol_name == "ResponseEndpoint":
-                    return_data_only = False
-
             protocol_args = get_args(endpoint_protocol)
             request_model = None
             if len(protocol_args) > 1 and protocol_args[1] is not type(None):
@@ -152,7 +144,6 @@ class AsyncClient:
                 attr_name,
                 endpoint_spec,
                 endpoint_protocol,
-                return_data_only,
                 request_model,
             )
             setattr(cls, attr_name, descriptor)

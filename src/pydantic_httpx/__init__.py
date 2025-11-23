@@ -26,7 +26,6 @@ from pydantic_httpx.exceptions import (
 from pydantic_httpx.resource import BaseResource
 from pydantic_httpx.response import DataResponse
 from pydantic_httpx.types import VALID_HTTP_METHODS, HTTPMethod, ResponseEndpoint
-from pydantic_httpx.types import Endpoint as EndpointProtocol
 from pydantic_httpx.validators import endpoint_validator
 
 __all__ = [
@@ -47,7 +46,6 @@ __all__ = [
     "AsyncClient",
     "BaseResource",
     # Endpoint Types (Protocol)
-    "Endpoint",  # Protocol for Endpoint[T]
     "ResponseEndpoint",  # Protocol for ResponseEndpoint[T]
     # Validators
     "endpoint_validator",
@@ -65,6 +63,3 @@ __all__ = [
     "HTTPMethod",
     "VALID_HTTP_METHODS",
 ]
-
-# Re-export Endpoint as the type annotation (Protocol)
-Endpoint = EndpointProtocol

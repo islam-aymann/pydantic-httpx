@@ -18,7 +18,6 @@ from pydantic_httpx import (
     Client,
     ClientConfig,
     DataResponse,
-    Endpoint,
     RequestError,
     RequestTimeoutError,
     ResponseEndpoint,
@@ -44,7 +43,7 @@ class TestGetTypeHintsFallback:
         # Create a client with an endpoint
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
+            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
 
         httpx_mock.add_response(json={"id": 1, "name": "Alice"})
 
@@ -59,7 +58,7 @@ class TestGetTypeHintsFallback:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
+            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
 
         httpx_mock.add_response(json={"id": 1, "name": "Alice"})
 
@@ -82,7 +81,7 @@ class TestJsonBodyWithoutModel:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            create_user: Annotated[Endpoint[User], POST("/users")]
+            create_user: Annotated[ResponseEndpoint[User], POST("/users")]
 
         httpx_mock.add_response(json={"id": 1, "name": "Bob"})
 
@@ -102,7 +101,7 @@ class TestJsonBodyWithoutModel:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            create_user: Annotated[Endpoint[User], POST("/users")]
+            create_user: Annotated[ResponseEndpoint[User], POST("/users")]
 
         httpx_mock.add_response(json={"id": 2, "name": "Charlie"})
 
@@ -148,7 +147,7 @@ class TestEndpointDescriptorMethods:
         from pydantic_httpx.resource import EndpointDescriptor
 
         endpoint = GET("/users/{id}")
-        descriptor = EndpointDescriptor("test", endpoint, User, return_data_only=True)
+        descriptor = EndpointDescriptor("test", endpoint, User)
 
         # Simulate __set_name__ being called by the descriptor protocol
         descriptor.__set_name__(Client, "my_endpoint")
@@ -161,7 +160,7 @@ class TestEndpointDescriptorMethods:
         from pydantic_httpx.resource import EndpointDescriptor
 
         endpoint = GET("/users/{id}")
-        descriptor = EndpointDescriptor("test", endpoint, User, return_data_only=True)
+        descriptor = EndpointDescriptor("test", endpoint, User)
 
         # Calling the descriptor directly should raise NotImplementedError
         with pytest.raises(NotImplementedError) as exc_info:
@@ -178,7 +177,7 @@ class TestWrapValidatorReturnTypes:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
+            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
 
             @endpoint_validator("get_user", mode="wrap")
             def cached_response(cls, handler, params: dict) -> User:
@@ -234,31 +233,33 @@ class TestListResponseWithoutBaseModel:
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
             # Using list[dict] instead of list[User]
-            get_items: Annotated[Endpoint[list[dict]], GET("/items")]
+            get_items: Annotated[ResponseEndpoint[list[dict]], GET("/items")]
 
         httpx_mock.add_response(json=[{"id": 1, "value": "a"}, {"id": 2, "value": "b"}])
 
         client = TestClient()
-        items = client.get_items()
+        response = client.get_items()
 
-        assert len(items) == 2
-        assert items[0]["id"] == 1
-        assert items[1]["value"] == "b"
+        assert isinstance(response, DataResponse)
+        assert len(response.data) == 2
+        assert response.data[0]["id"] == 1
+        assert response.data[1]["value"] == "b"
 
     def test_async_list_of_dicts_without_model(self, httpx_mock: HTTPXMock):
         """Test async endpoint returning list[dict] instead of list[BaseModel]."""
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_items: Annotated[Endpoint[list[dict]], GET("/items")]
+            get_items: Annotated[ResponseEndpoint[list[dict]], GET("/items")]
 
         httpx_mock.add_response(json=[{"id": 3, "value": "c"}])
 
         async def run_test():
             async with TestAsyncClient() as client:
-                items = await client.get_items()
-                assert len(items) == 1
-                assert items[0]["id"] == 3
+                response = await client.get_items()
+                assert isinstance(response, DataResponse)
+                assert len(response.data) == 1
+                assert response.data[0]["id"] == 3
 
         import asyncio
 
@@ -273,7 +274,7 @@ class TestResponseParsingErrors:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
+            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
 
         # Return invalid JSON
         httpx_mock.add_response(content=b"This is not JSON", status_code=200)
@@ -290,7 +291,7 @@ class TestResponseParsingErrors:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
+            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
 
         # Return invalid JSON
         httpx_mock.add_response(content=b"<html>Not JSON</html>", status_code=200)
@@ -331,31 +332,33 @@ class TestResponseWithDict:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_data: Annotated[Endpoint[dict], GET("/data")]
+            get_data: Annotated[ResponseEndpoint[dict], GET("/data")]
 
         httpx_mock.add_response(json={"key": "value", "count": 42})
 
         client = TestClient()
-        data = client.get_data()
+        response = client.get_data()
 
-        assert isinstance(data, dict)
-        assert data["key"] == "value"
-        assert data["count"] == 42
+        assert isinstance(response, DataResponse)
+        assert isinstance(response.data, dict)
+        assert response.data["key"] == "value"
+        assert response.data["count"] == 42
 
     def test_async_dict_response_type(self, httpx_mock: HTTPXMock):
         """Test async endpoint that returns dict instead of BaseModel."""
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_data: Annotated[Endpoint[dict], GET("/data")]
+            get_data: Annotated[ResponseEndpoint[dict], GET("/data")]
 
         httpx_mock.add_response(json={"status": "ok"})
 
         async def run_test():
             async with TestAsyncClient() as client:
-                data = await client.get_data()
-                assert isinstance(data, dict)
-                assert data["status"] == "ok"
+                response = await client.get_data()
+                assert isinstance(response, DataResponse)
+                assert isinstance(response.data, dict)
+                assert response.data["status"] == "ok"
 
         import asyncio
 

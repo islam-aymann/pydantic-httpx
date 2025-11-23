@@ -15,7 +15,6 @@ from pydantic_httpx import (
     Client,
     ClientConfig,
     DataResponse,
-    Endpoint,
     HTTPError,
     ResourceConfig,
     ResponseEndpoint,
@@ -230,7 +229,7 @@ class TestIntegration:
             resource.get(id=1)
 
     def test_endpoint_returns_data_only(self, httpx_mock: HTTPXMock) -> None:
-        """Test that Endpoint[T] returns data directly (not DataResponse)."""
+        """Test that ResponseEndpoint[T] returns DataResponse[T]."""
         httpx_mock.add_response(
             url="https://api.example.com/users/1",
             json={"id": 1, "name": "Alice", "email": "alice@example.com"},
@@ -239,19 +238,19 @@ class TestIntegration:
 
         class SimpleClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
+            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
 
         client = SimpleClient()
-        result = client.get_user(id=1)
+        response = client.get_user(id=1)
 
-        # Verify result is User directly (not DataResponse)
-        assert isinstance(result, User)
-        assert not isinstance(result, DataResponse)
-        assert result.id == 1
-        assert result.name == "Alice"
+        # Verify result is DataResponse[User]
+        assert isinstance(response, DataResponse)
+        assert isinstance(response.data, User)
+        assert response.data.id == 1
+        assert response.data.name == "Alice"
 
     def test_endpoint_with_list_returns_data_only(self, httpx_mock: HTTPXMock) -> None:
-        """Test that Endpoint[list[T]] returns list directly."""
+        """Test that ResponseEndpoint[list[T]] returns DataResponse[list[T]]."""
         httpx_mock.add_response(
             url="https://api.example.com/users",
             json=[
@@ -263,17 +262,18 @@ class TestIntegration:
 
         class SimpleClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            list_users: Annotated[Endpoint[list[User]], GET("/users")]
+            list_users: Annotated[ResponseEndpoint[list[User]], GET("/users")]
 
         client = SimpleClient()
-        result = client.list_users()
+        response = client.list_users()
 
-        # Verify result is list[User] directly
-        assert isinstance(result, list)
-        assert len(result) == 2
-        assert all(isinstance(u, User) for u in result)
-        assert result[0].name == "Alice"
-        assert result[1].name == "Bob"
+        # Verify result is DataResponse[list[User]]
+        assert isinstance(response, DataResponse)
+        assert isinstance(response.data, list)
+        assert len(response.data) == 2
+        assert all(isinstance(u, User) for u in response.data)
+        assert response.data[0].name == "Alice"
+        assert response.data[1].name == "Bob"
 
     def test_response_endpoint_returns_full_response(
         self,
@@ -302,7 +302,7 @@ class TestIntegration:
         assert result.data.name == "Alice"
 
     def test_mixed_endpoint_types(self, httpx_mock: HTTPXMock) -> None:
-        """Test using both Endpoint[T] and ResponseEndpoint[T] in same client."""
+        """Test using ResponseEndpoint[T] for different response types."""
         httpx_mock.add_response(
             url="https://api.example.com/users",
             json=[{"id": 1, "name": "Alice", "email": "alice@example.com"}],
@@ -316,15 +316,16 @@ class TestIntegration:
 
         class MixedClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            list_users: Annotated[Endpoint[list[User]], GET("/users")]
+            list_users: Annotated[ResponseEndpoint[list[User]], GET("/users")]
             get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
 
         client = MixedClient()
 
-        # Endpoint[T] returns data
-        users = client.list_users()
-        assert isinstance(users, list)
-        assert isinstance(users[0], User)
+        # Both return DataResponse
+        list_response = client.list_users()
+        assert isinstance(list_response, DataResponse)
+        assert isinstance(list_response.data, list)
+        assert isinstance(list_response.data[0], User)
 
         # ResponseEndpoint[T] returns DataResponse
         response = client.get_user(id=1)

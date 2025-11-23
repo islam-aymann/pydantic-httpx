@@ -38,7 +38,6 @@ class EndpointDescriptor:
         name: str,
         endpoint: BaseEndpoint,
         response_type: type,
-        return_data_only: bool = True,
         request_model: type | None = None,
     ) -> None:
         """
@@ -47,15 +46,12 @@ class EndpointDescriptor:
         Args:
             name: The attribute name of the endpoint.
             endpoint: The BaseEndpoint metadata.
-            response_type: Expected response type (Endpoint[T] or ResponseEndpoint[T]).
-            return_data_only: If True, return data only (Endpoint[T]).
-                If False, return full DataResponse[T] (ResponseEndpoint[T]).
+            response_type: Expected response type (ResponseEndpoint[T]).
             request_model: Optional Pydantic model for request validation.
         """
         self.name = name
         self.endpoint = endpoint
         self.response_type = response_type
-        self.return_data_only = return_data_only
         self.request_model = request_model
 
     def __set_name__(self, owner: type, name: str) -> None:
@@ -222,12 +218,7 @@ class EndpointDescriptor:
                         after_validators, response, instance
                     )
 
-                # Return data only if Endpoint[T], else return full DataResponse[T]
-                if self.return_data_only:
-                    # If after validators returned custom data, use it
-                    if isinstance(result, DataResponse):
-                        return result.data  # type: ignore[no-any-return]
-                    return result  # type: ignore[no-any-return]
+                # Always return full DataResponse[T]
                 return result if isinstance(result, DataResponse) else response
 
             return async_endpoint_method
@@ -308,12 +299,7 @@ class EndpointDescriptor:
                         after_validators, response, instance
                     )
 
-                # Return data only if Endpoint[T], else return full DataResponse[T]
-                if self.return_data_only:
-                    # If after validators returned custom data, use it
-                    if isinstance(result, DataResponse):
-                        return result.data  # type: ignore[no-any-return]
-                    return result  # type: ignore[no-any-return]
+                # Always return full DataResponse[T]
                 return result if isinstance(result, DataResponse) else response
 
             return sync_endpoint_method
@@ -369,7 +355,6 @@ class BaseResource:
         EndpointDescriptor instances.
 
         Supports:
-        - get: Annotated[Endpoint[User], GET("/{id}")]  # Returns User
         - get: Annotated[ResponseEndpoint[User], GET("/{id}")]
                # Returns DataResponse[User]
         """
@@ -411,14 +396,6 @@ class BaseResource:
             if endpoint_spec is None:
                 continue
 
-            protocol_origin = get_origin(endpoint_protocol)
-            return_data_only = True
-
-            if protocol_origin is not None:
-                protocol_name = getattr(protocol_origin, "__name__", "")
-                if protocol_name == "ResponseEndpoint":
-                    return_data_only = False
-
             protocol_args = get_args(endpoint_protocol)
             request_model = None
             if len(protocol_args) > 1 and protocol_args[1] is not type(None):
@@ -427,7 +404,7 @@ class BaseResource:
             response_type = endpoint_protocol
 
             descriptor = EndpointDescriptor(
-                attr_name, endpoint_spec, response_type, return_data_only, request_model
+                attr_name, endpoint_spec, response_type, request_model
             )
             setattr(cls, attr_name, descriptor)
             descriptor.__set_name__(cls, attr_name)
