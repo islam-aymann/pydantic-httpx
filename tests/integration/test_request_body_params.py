@@ -7,7 +7,7 @@ from typing import Annotated
 from pydantic import BaseModel
 from pytest_httpx import HTTPXMock
 
-from pydantic_httpx import POST, Client, ClientConfig, ResponseEndpoint
+from pydantic_httpx import POST, Client, ClientConfig, Endpoint
 
 
 class LoginRequest(BaseModel):
@@ -39,7 +39,7 @@ class TestJSONParameter:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            create: Annotated[ResponseEndpoint[LoginResponse], POST("/create")]
+            create: Annotated[Endpoint[LoginResponse], POST("/create")]
 
         httpx_mock.add_response(
             url="https://api.example.com/create",
@@ -62,9 +62,7 @@ class TestJSONParameter:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            create: Annotated[
-                ResponseEndpoint[LoginResponse, LoginRequest], POST("/create")
-            ]
+            create: Annotated[Endpoint[LoginResponse, LoginRequest], POST("/create")]
 
         httpx_mock.add_response(
             url="https://api.example.com/create",
@@ -91,7 +89,7 @@ class TestDataParameter:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            login: Annotated[ResponseEndpoint[LoginResponse], POST("/login")]
+            login: Annotated[Endpoint[LoginResponse], POST("/login")]
 
         httpx_mock.add_response(
             url="https://api.example.com/login",
@@ -116,9 +114,7 @@ class TestDataParameter:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            login: Annotated[
-                ResponseEndpoint[LoginResponse, LoginRequest], POST("/login")
-            ]
+            login: Annotated[Endpoint[LoginResponse, LoginRequest], POST("/login")]
 
         httpx_mock.add_response(
             url="https://api.example.com/login",
@@ -146,7 +142,7 @@ class TestFilesParameter:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            upload: Annotated[ResponseEndpoint[UploadResponse], POST("/upload")]
+            upload: Annotated[Endpoint[UploadResponse], POST("/upload")]
 
         httpx_mock.add_response(
             url="https://api.example.com/upload",
@@ -173,7 +169,7 @@ class TestFilesParameter:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            upload: Annotated[ResponseEndpoint[UploadResponse], POST("/upload")]
+            upload: Annotated[Endpoint[UploadResponse], POST("/upload")]
 
         httpx_mock.add_response(
             url="https://api.example.com/upload",
@@ -208,7 +204,7 @@ class TestContentParameter:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            webhook: Annotated[ResponseEndpoint[dict], POST("/webhook")]
+            webhook: Annotated[Endpoint[dict], POST("/webhook")]
 
         httpx_mock.add_response(
             url="https://api.example.com/webhook",
@@ -238,7 +234,7 @@ class TestBodyParameterExclusion:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            create: Annotated[ResponseEndpoint[LoginResponse], POST("/create")]
+            create: Annotated[Endpoint[LoginResponse], POST("/create")]
 
         httpx_mock.add_response(
             url="https://api.example.com/create",
@@ -259,7 +255,7 @@ class TestBodyParameterExclusion:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            login: Annotated[ResponseEndpoint[LoginResponse], POST("/login")]
+            login: Annotated[Endpoint[LoginResponse], POST("/login")]
 
         httpx_mock.add_response(
             url="https://api.example.com/login",
@@ -280,7 +276,7 @@ class TestBodyParameterExclusion:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            search: Annotated[ResponseEndpoint[LoginResponse], POST("/search")]
+            search: Annotated[Endpoint[LoginResponse], POST("/search")]
 
         httpx_mock.add_response(
             url="https://api.example.com/search?page=1&limit=10",
@@ -314,9 +310,7 @@ class TestAsyncClientBodyParams:
 
         class TestClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            create: Annotated[
-                ResponseEndpoint[LoginResponse, LoginRequest], POST("/create")
-            ]
+            create: Annotated[Endpoint[LoginResponse, LoginRequest], POST("/create")]
 
         httpx_mock.add_response(
             url="https://api.example.com/create",
@@ -338,9 +332,7 @@ class TestAsyncClientBodyParams:
 
         class TestClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            login: Annotated[
-                ResponseEndpoint[LoginResponse, LoginRequest], POST("/login")
-            ]
+            login: Annotated[Endpoint[LoginResponse, LoginRequest], POST("/login")]
 
         httpx_mock.add_response(
             url="https://api.example.com/login",

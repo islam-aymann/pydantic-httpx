@@ -20,9 +20,9 @@ from pydantic_httpx import (
     Client,
     ClientConfig,
     DataResponse,
+    Endpoint,
     RequestError,
     ResourceConfig,
-    ResponseEndpoint,
     endpoint_validator,
 )
 
@@ -42,7 +42,7 @@ class TestAsyncWrapValidatorEdgeCases:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
             @endpoint_validator("get_user", mode="wrap")
             async def cached_response(cls, handler, params: dict) -> User:
@@ -67,7 +67,7 @@ class TestAsyncWrapValidatorEdgeCases:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
             @endpoint_validator("get_user", mode="wrap")
             async def async_wrap(cls, handler, params: dict) -> DataResponse[User]:
@@ -86,8 +86,8 @@ class TestAsyncWrapValidatorEdgeCases:
         asyncio.run(run_test())
 
 
-class TestResourceAfterValidatorWithResponseEndpoint:
-    """Test after validators with ResponseEndpoint to cover line 306."""
+class TestResourceAfterValidatorWithEndpoint:
+    """Test after validators with Endpoint to cover line 306."""
 
     def test_resource_after_validator_with_response_endpoint(
         self, httpx_mock: HTTPXMock
@@ -96,7 +96,7 @@ class TestResourceAfterValidatorWithResponseEndpoint:
 
         class UserResource(BaseResource):
             resource_config = ResourceConfig(prefix="/users")
-            get: Annotated[ResponseEndpoint[User], GET("/{id}")]
+            get: Annotated[Endpoint[User], GET("/{id}")]
 
             @endpoint_validator("get", mode="after")
             def modify_response(
@@ -133,7 +133,7 @@ class TestEndpointWithCookiesAuthRedirects:
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
             get_user: Annotated[
-                ResponseEndpoint[User],
+                Endpoint[User],
                 GET("/users/{id}", cookies={"session": "abc123"}),
             ]
 
@@ -158,7 +158,7 @@ class TestEndpointWithCookiesAuthRedirects:
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
             get_user: Annotated[
-                ResponseEndpoint[User], GET("/users/{id}", auth=("user", "pass"))
+                Endpoint[User], GET("/users/{id}", auth=("user", "pass"))
             ]
 
         httpx_mock.add_response(json={"id": 2, "name": "Bob"})
@@ -185,7 +185,7 @@ class TestEndpointWithCookiesAuthRedirects:
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
             get_user: Annotated[
-                ResponseEndpoint[User], GET("/users/{id}", follow_redirects=False)
+                Endpoint[User], GET("/users/{id}", follow_redirects=False)
             ]
 
         httpx_mock.add_response(json={"id": 3, "name": "Charlie"})
@@ -210,7 +210,7 @@ class TestClientTimeoutErrors:
             client_config = ClientConfig(
                 base_url="https://api.example.com", timeout=0.001
             )
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
         # Simulate timeout by not adding a response
         httpx_mock.add_exception(httpx.TimeoutException("Request timeout"))
@@ -229,7 +229,7 @@ class TestClientTimeoutErrors:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
         # Simulate network error
         httpx_mock.add_exception(httpx.RequestError("Connection failed"))
@@ -251,7 +251,7 @@ class TestClientTimeoutErrors:
             client_config = ClientConfig(
                 base_url="https://api.example.com", timeout=0.001
             )
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
         httpx_mock.add_exception(httpx.TimeoutException("Request timeout"))
 
@@ -273,7 +273,7 @@ class TestClientTimeoutErrors:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
         httpx_mock.add_exception(httpx.RequestError("Network error"))
 
@@ -301,7 +301,7 @@ class TestQueryParamsWithoutModel:
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
             # No query_model specified
-            list_users: Annotated[ResponseEndpoint[list[User]], GET("/users")]
+            list_users: Annotated[Endpoint[list[User]], GET("/users")]
 
         httpx_mock.add_response(json=[{"id": 1, "name": "Alice"}])
 
@@ -321,7 +321,7 @@ class TestQueryParamsWithoutModel:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            list_users: Annotated[ResponseEndpoint[list[User]], GET("/users")]
+            list_users: Annotated[Endpoint[list[User]], GET("/users")]
 
         httpx_mock.add_response(json=[{"id": 2, "name": "Bob"}])
 
@@ -348,7 +348,7 @@ class TestResponseValidationEdgeCases:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_data: Annotated[ResponseEndpoint[list[dict]], GET("/data")]
+            get_data: Annotated[Endpoint[list[dict]], GET("/data")]
 
         httpx_mock.add_response(json=[{"key": "value"}, {"key": "value2"}])
 
@@ -368,7 +368,7 @@ class TestResponseValidationEdgeCases:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
         httpx_mock.add_response(content=b"Invalid JSON!", status_code=200)
 
@@ -393,7 +393,7 @@ class TestInnerTypeExtraction:
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
             # Using plain dict without generic args
-            get_data: Annotated[ResponseEndpoint[dict], GET("/data")]
+            get_data: Annotated[Endpoint[dict], GET("/data")]
 
         httpx_mock.add_response(json={"result": "success"})
 
@@ -407,7 +407,7 @@ class TestInnerTypeExtraction:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_data: Annotated[ResponseEndpoint[dict], GET("/data")]
+            get_data: Annotated[Endpoint[dict], GET("/data")]
 
         httpx_mock.add_response(json={"status": "ok"})
 

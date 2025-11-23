@@ -12,8 +12,7 @@ if TYPE_CHECKING:
     from pydantic_httpx.response import DataResponse
 
 # TypeVars for Endpoint type parameters
-T_co = TypeVar("T_co", covariant=True)  # Response type (covariant for Endpoint)
-T = TypeVar("T")  # Response type (invariant for ResponseEndpoint)
+T = TypeVar("T")  # Response type for Endpoint
 # Request type with default=None (makes second parameter optional)
 T_Request = TypeVar("T_Request", covariant=True, default=None)
 
@@ -45,25 +44,25 @@ QueryParams: TypeAlias = dict[str, Any]
 PathParams: TypeAlias = dict[str, Any]
 
 
-class ResponseEndpoint(Protocol[T, T_Request]):
+class Endpoint(Protocol[T, T_Request]):
     """
-    Protocol for endpoints that return full DataResponse[T] wrapper.
+    Protocol for endpoints that return DataResponse[T] wrapper.
 
-    Use this when you need access to HTTP metadata like status codes,
-    headers, cookies, or response timing information.
+    All endpoints return DataResponse[T] which includes both the validated data
+    and HTTP metadata like status codes, headers, cookies, and timing information.
 
     Type Parameters:
-        T: Response type - what the endpoint returns
+        T: Response type - the data type wrapped in DataResponse[T]
         T_Request: Optional request model type for automatic validation (default: None)
             - Omit for endpoints without request validation (GET, DELETE, etc.)
             - Specify Pydantic model for automatic request body validation
 
     Example:
         >>> # GET endpoint - no request body (second param optional)
-        >>> get: ResponseEndpoint[User] = GET("/{id}")
+        >>> get: Annotated[Endpoint[User], GET("/{id}")]
         >>>
         >>> # POST endpoint with automatic request validation
-        >>> create: ResponseEndpoint[User, CreateUserRequest] = POST("")
+        >>> create: Annotated[Endpoint[User, CreateUserRequest], POST("")]
         >>>
         >>> # Returns DataResponse[User] with full metadata
         >>> response = client.users.get(id=1)  # Type: DataResponse[User]

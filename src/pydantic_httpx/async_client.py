@@ -33,9 +33,8 @@ class AsyncClient:
     This client wraps httpx.AsyncClient and provides automatic request/response
     validation using Pydantic models defined in resource classes.
 
-    Supports two endpoint types:
-    - Endpoint[T]: Returns data only (auto-extracts response.data)
-    - ResponseEndpoint[T]: Returns full DataResponse[T] wrapper
+    All endpoints use Endpoint[T] which returns DataResponse[T] wrapper.
+    Access the validated data using response.data property.
 
     Attributes:
         client_config: Configuration for the HTTP client.

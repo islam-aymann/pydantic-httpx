@@ -12,8 +12,8 @@ from pydantic_httpx import (
     BaseResource,
     Client,
     ClientConfig,
+    Endpoint,
     ResourceConfig,
-    ResponseEndpoint,
     endpoint_validator,
 )
 from pydantic_httpx.response import DataResponse
@@ -29,7 +29,7 @@ class User(BaseModel):
 class ClientWithBeforeValidator(Client):
     client_config = ClientConfig(base_url="https://api.example.com")
 
-    get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+    get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
     @endpoint_validator("get_user", mode="before")
     def validate_user_id(cls, params: dict[str, Any]) -> dict[str, Any]:
@@ -45,7 +45,7 @@ class ClientWithAfterValidator(Client):
         base_url="https://api.example.com", raise_on_error=False
     )
 
-    get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+    get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
     @endpoint_validator("get_user", mode="after")
     def handle_404(
@@ -62,7 +62,7 @@ class ClientWithAfterValidator(Client):
 class ClientWithWrapValidator(Client):
     client_config = ClientConfig(base_url="https://api.example.com")
 
-    get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+    get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
     # Simple cache storage (class-level for this test)
     _cache: dict[int, User] = {}
@@ -94,8 +94,8 @@ class ClientWithWrapValidator(Client):
 class UserResourceWithValidators(BaseResource):
     resource_config = ResourceConfig(prefix="/users")
 
-    get: Annotated[ResponseEndpoint[User], GET("/{id}")]
-    create: Annotated[ResponseEndpoint[User], POST("")]
+    get: Annotated[Endpoint[User], GET("/{id}")]
+    create: Annotated[Endpoint[User], POST("")]
 
     @endpoint_validator("get", mode="before")
     def validate_get_id(cls, params: dict[str, Any]) -> dict[str, Any]:
@@ -123,7 +123,7 @@ class ClientWithResource(Client):
 class AsyncClientWithBeforeValidator(AsyncClient):
     client_config = ClientConfig(base_url="https://api.example.com")
 
-    get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+    get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
     @endpoint_validator("get_user", mode="before")
     def validate_user_id(cls, params: dict[str, Any]) -> dict[str, Any]:
@@ -161,7 +161,7 @@ class TestBeforeValidators:
         class TransformingClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
 
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
             @endpoint_validator("get_user", mode="before")
             def uppercase_transform(cls, params: dict[str, Any]) -> dict[str, Any]:
@@ -291,7 +291,7 @@ class TestMultipleValidators:
         class MultiValidatorClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
 
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
             @endpoint_validator("get_user", mode="before")
             def first_validator(cls, params: dict[str, Any]) -> dict[str, Any]:
@@ -349,7 +349,7 @@ class TestValidatorEdgeCases:
         class ClientWithInvalidValidator(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
 
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
             @endpoint_validator("nonexistent_endpoint", mode="before")
             def unused_validator(cls, params: dict[str, Any]) -> dict[str, Any]:
@@ -370,7 +370,7 @@ class TestValidatorEdgeCases:
         class RegularClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
 
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
         client = RegularClient()
         user = client.get_user(id=1)

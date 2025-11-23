@@ -12,8 +12,8 @@ from pydantic_httpx import (
     AsyncClient,
     BaseResource,
     ClientConfig,
+    Endpoint,
     ResourceConfig,
-    ResponseEndpoint,
 )
 
 
@@ -30,9 +30,9 @@ class UserResource(BaseResource):
 
     resource_config = ResourceConfig(prefix="/users")
 
-    get: Annotated[ResponseEndpoint[User], GET("/{id}")]
-    list_all: Annotated[ResponseEndpoint[list[User]], GET("")]
-    create: Annotated[ResponseEndpoint[User], POST("")]
+    get: Annotated[Endpoint[User], GET("/{id}")]
+    list_all: Annotated[Endpoint[list[User]], GET("")]
+    create: Annotated[Endpoint[User], POST("")]
 
 
 class AsyncAPIClient(AsyncClient):
@@ -143,7 +143,7 @@ class TestAsyncQueryParameters:
 
         class SearchResource(BaseResource):
             resource_config = ResourceConfig(prefix="/search")
-            search: Annotated[ResponseEndpoint[list[User]], GET("")]
+            search: Annotated[Endpoint[list[User]], GET("")]
 
         class SearchClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")

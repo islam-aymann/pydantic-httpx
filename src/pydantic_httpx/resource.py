@@ -46,7 +46,7 @@ class EndpointDescriptor:
         Args:
             name: The attribute name of the endpoint.
             endpoint: The BaseEndpoint metadata.
-            response_type: Expected response type (ResponseEndpoint[T]).
+            response_type: Expected response type (Endpoint[T]).
             request_model: Optional Pydantic model for request validation.
         """
         self.name = name
@@ -355,7 +355,7 @@ class BaseResource:
         EndpointDescriptor instances.
 
         Supports:
-        - get: Annotated[ResponseEndpoint[User], GET("/{id}")]
+        - get: Annotated[Endpoint[User], GET("/{id}")]
                # Returns DataResponse[User]
         """
         super().__init_subclass__()

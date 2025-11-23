@@ -15,9 +15,9 @@ from pydantic_httpx import (
     Client,
     ClientConfig,
     DataResponse,
+    Endpoint,
     HTTPError,
     ResourceConfig,
-    ResponseEndpoint,
     ValidationError,
 )
 
@@ -42,10 +42,10 @@ class UserResource(BaseResource):
 
     resource_config = ResourceConfig(prefix="/users")
 
-    get: Annotated[ResponseEndpoint[User], GET("/{id}")]
-    list_all: Annotated[ResponseEndpoint[list[User]], GET("")]
-    create: Annotated[ResponseEndpoint[User, CreateUserRequest], POST("")]
-    delete: Annotated[ResponseEndpoint[None], DELETE("/{id}")]
+    get: Annotated[Endpoint[User], GET("/{id}")]
+    list_all: Annotated[Endpoint[list[User]], GET("")]
+    create: Annotated[Endpoint[User, CreateUserRequest], POST("")]
+    delete: Annotated[Endpoint[None], DELETE("/{id}")]
 
 
 class APIClient(Client):
@@ -98,6 +98,8 @@ class TestIntegration:
 
         client = APIClient()
         response = client.users.list_all()
+
+        print(response.data)
 
         assert isinstance(response, DataResponse)
         assert isinstance(response.data, list)
@@ -232,7 +234,7 @@ class TestIntegration:
         self,
         httpx_mock: HTTPXMock,
     ) -> None:
-        """Test that ResponseEndpoint[T] returns DataResponse[T]."""
+        """Test that Endpoint[T] returns DataResponse[T]."""
         httpx_mock.add_response(
             url="https://api.example.com/users/1",
             json={"id": 1, "name": "Alice", "email": "alice@example.com"},
@@ -242,7 +244,7 @@ class TestIntegration:
 
         class FullResponseClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
         client = FullResponseClient()
         result = client.get_user(id=1)

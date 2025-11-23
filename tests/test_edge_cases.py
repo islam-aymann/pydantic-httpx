@@ -18,9 +18,9 @@ from pydantic_httpx import (
     Client,
     ClientConfig,
     DataResponse,
+    Endpoint,
     RequestError,
     RequestTimeoutError,
-    ResponseEndpoint,
     endpoint_validator,
 )
 
@@ -43,7 +43,7 @@ class TestGetTypeHintsFallback:
         # Create a client with an endpoint
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
         httpx_mock.add_response(json={"id": 1, "name": "Alice"})
 
@@ -58,7 +58,7 @@ class TestGetTypeHintsFallback:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
         httpx_mock.add_response(json={"id": 1, "name": "Alice"})
 
@@ -81,7 +81,7 @@ class TestJsonBodyWithoutModel:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            create_user: Annotated[ResponseEndpoint[User], POST("/users")]
+            create_user: Annotated[Endpoint[User], POST("/users")]
 
         httpx_mock.add_response(json={"id": 1, "name": "Bob"})
 
@@ -101,7 +101,7 @@ class TestJsonBodyWithoutModel:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            create_user: Annotated[ResponseEndpoint[User], POST("/users")]
+            create_user: Annotated[Endpoint[User], POST("/users")]
 
         httpx_mock.add_response(json={"id": 2, "name": "Charlie"})
 
@@ -177,7 +177,7 @@ class TestWrapValidatorReturnTypes:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
             @endpoint_validator("get_user", mode="wrap")
             def cached_response(cls, handler, params: dict) -> User:
@@ -199,7 +199,7 @@ class TestWrapValidatorReturnTypes:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
             @endpoint_validator("get_user", mode="wrap")
             async def wrap_with_dataresponse(
@@ -233,7 +233,7 @@ class TestListResponseWithoutBaseModel:
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
             # Using list[dict] instead of list[User]
-            get_items: Annotated[ResponseEndpoint[list[dict]], GET("/items")]
+            get_items: Annotated[Endpoint[list[dict]], GET("/items")]
 
         httpx_mock.add_response(json=[{"id": 1, "value": "a"}, {"id": 2, "value": "b"}])
 
@@ -250,7 +250,7 @@ class TestListResponseWithoutBaseModel:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_items: Annotated[ResponseEndpoint[list[dict]], GET("/items")]
+            get_items: Annotated[Endpoint[list[dict]], GET("/items")]
 
         httpx_mock.add_response(json=[{"id": 3, "value": "c"}])
 
@@ -274,7 +274,7 @@ class TestResponseParsingErrors:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
         # Return invalid JSON
         httpx_mock.add_response(content=b"This is not JSON", status_code=200)
@@ -291,7 +291,7 @@ class TestResponseParsingErrors:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
         # Return invalid JSON
         httpx_mock.add_response(content=b"<html>Not JSON</html>", status_code=200)
@@ -332,7 +332,7 @@ class TestResponseWithDict:
 
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_data: Annotated[ResponseEndpoint[dict], GET("/data")]
+            get_data: Annotated[Endpoint[dict], GET("/data")]
 
         httpx_mock.add_response(json={"key": "value", "count": 42})
 
@@ -349,7 +349,7 @@ class TestResponseWithDict:
 
         class TestAsyncClient(AsyncClient):
             client_config = ClientConfig(base_url="https://api.example.com")
-            get_data: Annotated[ResponseEndpoint[dict], GET("/data")]
+            get_data: Annotated[Endpoint[dict], GET("/data")]
 
         httpx_mock.add_response(json={"status": "ok"})
 
