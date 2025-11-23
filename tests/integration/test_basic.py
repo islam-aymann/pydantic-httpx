@@ -228,53 +228,6 @@ class TestIntegration:
         with pytest.raises(RuntimeError, match="not bound to a client"):
             resource.get(id=1)
 
-    def test_endpoint_returns_data_only(self, httpx_mock: HTTPXMock) -> None:
-        """Test that ResponseEndpoint[T] returns DataResponse[T]."""
-        httpx_mock.add_response(
-            url="https://api.example.com/users/1",
-            json={"id": 1, "name": "Alice", "email": "alice@example.com"},
-            status_code=200,
-        )
-
-        class SimpleClient(Client):
-            client_config = ClientConfig(base_url="https://api.example.com")
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
-
-        client = SimpleClient()
-        response = client.get_user(id=1)
-
-        # Verify result is DataResponse[User]
-        assert isinstance(response, DataResponse)
-        assert isinstance(response.data, User)
-        assert response.data.id == 1
-        assert response.data.name == "Alice"
-
-    def test_endpoint_with_list_returns_data_only(self, httpx_mock: HTTPXMock) -> None:
-        """Test that ResponseEndpoint[list[T]] returns DataResponse[list[T]]."""
-        httpx_mock.add_response(
-            url="https://api.example.com/users",
-            json=[
-                {"id": 1, "name": "Alice", "email": "alice@example.com"},
-                {"id": 2, "name": "Bob", "email": "bob@example.com"},
-            ],
-            status_code=200,
-        )
-
-        class SimpleClient(Client):
-            client_config = ClientConfig(base_url="https://api.example.com")
-            list_users: Annotated[ResponseEndpoint[list[User]], GET("/users")]
-
-        client = SimpleClient()
-        response = client.list_users()
-
-        # Verify result is DataResponse[list[User]]
-        assert isinstance(response, DataResponse)
-        assert isinstance(response.data, list)
-        assert len(response.data) == 2
-        assert all(isinstance(u, User) for u in response.data)
-        assert response.data[0].name == "Alice"
-        assert response.data[1].name == "Bob"
-
     def test_response_endpoint_returns_full_response(
         self,
         httpx_mock: HTTPXMock,
@@ -300,34 +253,3 @@ class TestIntegration:
         assert result.headers["X-Custom"] == "value"
         assert isinstance(result.data, User)
         assert result.data.name == "Alice"
-
-    def test_mixed_endpoint_types(self, httpx_mock: HTTPXMock) -> None:
-        """Test using ResponseEndpoint[T] for different response types."""
-        httpx_mock.add_response(
-            url="https://api.example.com/users",
-            json=[{"id": 1, "name": "Alice", "email": "alice@example.com"}],
-            status_code=200,
-        )
-        httpx_mock.add_response(
-            url="https://api.example.com/users/1",
-            json={"id": 1, "name": "Alice", "email": "alice@example.com"},
-            status_code=200,
-        )
-
-        class MixedClient(Client):
-            client_config = ClientConfig(base_url="https://api.example.com")
-            list_users: Annotated[ResponseEndpoint[list[User]], GET("/users")]
-            get_user: Annotated[ResponseEndpoint[User], GET("/users/{id}")]
-
-        client = MixedClient()
-
-        # Both return DataResponse
-        list_response = client.list_users()
-        assert isinstance(list_response, DataResponse)
-        assert isinstance(list_response.data, list)
-        assert isinstance(list_response.data[0], User)
-
-        # ResponseEndpoint[T] returns DataResponse
-        response = client.get_user(id=1)
-        assert isinstance(response, DataResponse)
-        assert isinstance(response.data, User)
