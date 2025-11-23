@@ -105,6 +105,50 @@ new_user_response = client.users.create(json={"name": "John", "email": "john@exa
 print(new_user_response.status_code)  # 201
 ```
 
+## Syntax Options
+
+pydantic-httpx supports two syntax styles for defining endpoints. Both work identically at runtime.
+
+### Annotated Syntax (Recommended) ✅
+
+The `Annotated` syntax provides **perfect type inference** across all type checkers and IDEs:
+
+```python
+from typing import Annotated
+
+class UserResource(BaseResource):
+    # Perfect type inference everywhere
+    get: Annotated[Endpoint[User], GET("/{id}")]
+    list_all: Annotated[Endpoint[list[User]], GET("")]
+```
+
+**Why it's recommended:**
+- ✅ Zero type checker errors (mypy, Pyright, PyCharm)
+- ✅ Perfect IDE autocomplete and type hints
+- ✅ Follows modern Python patterns (SQLAlchemy 2.0, Pydantic v2)
+- ✅ No configuration or plugins needed
+
+### Assignment Syntax (Alternative)
+
+For cleaner-looking code, you can use assignment syntax:
+
+```python
+class UserResource(BaseResource):
+    # Cleaner syntax
+    get: Endpoint[User] = GET("/{id}")
+    list_all: Endpoint[list[User]] = GET("")
+```
+
+**Trade-offs:**
+- ✅ Cleaner, more concise syntax
+- ✅ Works identically at runtime
+- ⚠️ Some editors may show `DataResponse[Any]` instead of `DataResponse[User]`
+- ⚠️ Type inference varies across different type checkers
+
+**Note**: The type inference issue with assignment syntax is a known limitation of Python's type system, not a bug in pydantic-httpx. Call sites still type-check correctly, and runtime behavior is identical to `Annotated`.
+
+**Our recommendation**: Use `Annotated` syntax for best developer experience, but choose what works best for your project.
+
 ### Automatic Request Validation
 
 Add a Pydantic model as the second type parameter for automatic request body validation:
@@ -120,13 +164,15 @@ class UserResource(BaseResource):
     resource_config = ResourceConfig(prefix="/users")
 
     # Second type parameter enables automatic request validation
-    create: Annotated[Endpoint[User, CreateUserRequest], POST("")]
+    # Works with both syntaxes:
+    create_annotated: Annotated[Endpoint[User, CreateUserRequest], POST("")]
+    create_assignment: Endpoint[User, CreateUserRequest] = POST("")
 
 # Use it - request body is automatically validated!
 client = APIClient()
-response = client.users.create(json={"name": "John", "email": "john@example.com"})  # ✅ Valid
+response = client.users.create_annotated(json={"name": "John", "email": "john@example.com"})  # ✅ Valid
 print(response.data.name)  # "John"
-# client.users.create(json={"name": "John"})  # ❌ Raises ValidationError (missing email)
+# client.users.create_annotated(json={"name": "John"})  # ❌ Raises ValidationError (missing email)
 ```
 
 **Key points:**

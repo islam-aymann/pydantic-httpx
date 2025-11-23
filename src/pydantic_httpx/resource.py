@@ -310,12 +310,12 @@ class BaseResource:
     Base class for defining HTTP resource endpoints.
 
     Resources group related endpoints together with a common prefix.
-    Endpoints are defined using Annotated type hints with Endpoint metadata.
+    Supports both Annotated and assignment syntax for endpoint definitions.
 
     Attributes:
         resource_config: Configuration for the resource (prefix, timeout, headers).
 
-    Example:
+    Example (Annotated syntax - recommended):
         >>> from typing import Annotated
         >>> from pydantic import BaseModel
         >>> from pydantic_httpx import (
@@ -332,6 +332,14 @@ class BaseResource:
         >>>     get: Annotated[Endpoint[User], GET("/{id}")]
         >>>     list: Annotated[Endpoint[list[User]], GET("")]
         >>>     create: Annotated[Endpoint[User, User], POST("")]
+
+    Example (Assignment syntax - alternative):
+        >>> class UserResource(BaseResource):
+        >>>     resource_config = ResourceConfig(prefix="/users")
+        >>>
+        >>>     get: Endpoint[User] = GET("/{id}")
+        >>>     list: Endpoint[list[User]] = GET("")
+        >>>     create: Endpoint[User, User] = POST("")
     """
 
     resource_config: ResourceConfig = {}
@@ -354,9 +362,11 @@ class BaseResource:
         This method parses endpoint definitions and replaces them with
         EndpointDescriptor instances.
 
-        Supports:
-        - get: Annotated[Endpoint[User], GET("/{id}")]
-               # Returns DataResponse[User]
+        Supports two syntaxes:
+        1. Annotated: get: Annotated[Endpoint[User], GET("/{id}")]
+        2. Assignment: get: Endpoint[User] = GET("/{id}")
+
+        Both syntaxes provide identical type inference and runtime behavior.
         """
         super().__init_subclass__()
 
@@ -371,40 +381,41 @@ class BaseResource:
             type_hints = getattr(cls, "__annotations__", {})
 
         for attr_name, annotation in type_hints.items():
-            origin = get_origin(annotation)
-
-            if origin is None:
-                continue
-
-            origin_name = getattr(origin, "__name__", "")
-            if origin_name != "Annotated":
-                continue
-
-            args = get_args(annotation)
-            if not args or len(args) < 2:
-                continue
-
-            endpoint_protocol = args[0]
-            metadata = args[1:]
-
             endpoint_spec = None
-            for item in metadata:
-                if isinstance(item, BaseEndpoint):
-                    endpoint_spec = item
-                    break
+            endpoint_protocol = None
+            request_model = None
+
+            origin = get_origin(annotation)
+            if origin is not None:
+                origin_name = getattr(origin, "__name__", "")
+                if origin_name == "Annotated":
+                    args = get_args(annotation)
+                    if args and len(args) >= 2:
+                        endpoint_protocol = args[0]
+                        metadata = args[1:]
+
+                        for item in metadata:
+                            if isinstance(item, BaseEndpoint):
+                                endpoint_spec = item
+                                break
 
             if endpoint_spec is None:
-                continue
+                attr_value = getattr(cls, attr_name, None)
+                if isinstance(attr_value, BaseEndpoint):
+                    endpoint_spec = attr_value
+                    endpoint_protocol = annotation
 
-            protocol_args = get_args(endpoint_protocol)
-            request_model = None
-            if len(protocol_args) > 1 and protocol_args[1] is not type(None):
-                request_model = protocol_args[1]
+            if endpoint_spec is not None and endpoint_protocol is not None:
+                protocol_origin = get_origin(endpoint_protocol)
+                if protocol_origin is not None:
+                    protocol_args = get_args(endpoint_protocol)
+                    if len(protocol_args) > 1 and protocol_args[1] is not type(None):
+                        request_model = protocol_args[1]
 
-            response_type = endpoint_protocol
+                response_type = endpoint_protocol
 
-            descriptor = EndpointDescriptor(
-                attr_name, endpoint_spec, response_type, request_model
-            )
-            setattr(cls, attr_name, descriptor)
-            descriptor.__set_name__(cls, attr_name)
+                descriptor = EndpointDescriptor(
+                    attr_name, endpoint_spec, response_type, request_model
+                )
+                setattr(cls, attr_name, descriptor)
+                descriptor.__set_name__(cls, attr_name)
