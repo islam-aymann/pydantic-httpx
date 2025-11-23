@@ -84,7 +84,15 @@ class Client:
         self._init_resources()
 
     def __init_subclass__(cls) -> None:
-        """Called when a subclass is created to parse resources and endpoints."""
+        """
+        Called when a subclass is created to parse resources and endpoints.
+
+        Supports two syntaxes for direct endpoints on client:
+        1. Annotated: get_user: Annotated[Endpoint[User], GET("/users/{id}")]
+        2. Assignment: get_user: Endpoint[User] = GET("/users/{id}")
+
+        Both syntaxes provide identical type inference and runtime behavior.
+        """
         super().__init_subclass__()
 
         if not hasattr(cls, "client_config") or cls.client_config is None:
@@ -104,44 +112,45 @@ class Client:
                 cls._resource_classes[attr_name] = annotation
                 continue
 
-            origin = get_origin(annotation)
-
-            if origin is None:
-                continue
-
-            origin_name = getattr(origin, "__name__", "")
-            if origin_name != "Annotated":
-                continue
-
-            args = get_args(annotation)
-            if not args or len(args) < 2:
-                continue
-
-            endpoint_protocol = args[0]
-            metadata = args[1:]
-
             endpoint_spec = None
-            for item in metadata:
-                if isinstance(item, BaseEndpoint):
-                    endpoint_spec = item
-                    break
+            endpoint_protocol = None
+            request_model = None
+
+            origin = get_origin(annotation)
+            if origin is not None:
+                origin_name = getattr(origin, "__name__", "")
+                if origin_name == "Annotated":
+                    args = get_args(annotation)
+                    if args and len(args) >= 2:
+                        endpoint_protocol = args[0]
+                        metadata = args[1:]
+
+                        for item in metadata:
+                            if isinstance(item, BaseEndpoint):
+                                endpoint_spec = item
+                                break
 
             if endpoint_spec is None:
-                continue
+                attr_value = getattr(cls, attr_name, None)
+                if isinstance(attr_value, BaseEndpoint):
+                    endpoint_spec = attr_value
+                    endpoint_protocol = annotation
 
-            protocol_args = get_args(endpoint_protocol)
-            request_model = None
-            if len(protocol_args) > 1 and protocol_args[1] is not type(None):
-                request_model = protocol_args[1]
+            if endpoint_spec is not None and endpoint_protocol is not None:
+                protocol_origin = get_origin(endpoint_protocol)
+                if protocol_origin is not None:
+                    protocol_args = get_args(endpoint_protocol)
+                    if len(protocol_args) > 1 and protocol_args[1] is not type(None):
+                        request_model = protocol_args[1]
 
-            descriptor = EndpointDescriptor(
-                attr_name,
-                endpoint_spec,
-                endpoint_protocol,
-                request_model,
-            )
-            setattr(cls, attr_name, descriptor)
-            descriptor.__set_name__(cls, attr_name)
+                descriptor = EndpointDescriptor(
+                    attr_name,
+                    endpoint_spec,
+                    endpoint_protocol,
+                    request_model,
+                )
+                setattr(cls, attr_name, descriptor)
+                descriptor.__set_name__(cls, attr_name)
 
     def _init_resources(self) -> None:
         """Initialize resource instances and bind them to this client."""

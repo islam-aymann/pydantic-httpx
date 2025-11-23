@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, overload
 from urllib.parse import quote
 
 import httpx
@@ -106,14 +107,29 @@ class BaseEndpoint:
 
     if TYPE_CHECKING:
 
-        def __call__(self, **kwargs: Any) -> DataResponse[Any]:
-            """
-            Type hint for IDE support.
+        @overload
+        def __get__(self, instance: None, owner: type) -> BaseEndpoint: ...
 
-            This method exists only for type checking and is never called
-            at runtime. At runtime, endpoints are replaced by
-            EndpointDescriptor which handles calls.
+        @overload
+        def __get__(
+            self, instance: object, owner: type
+        ) -> Callable[..., DataResponse[Any] | Awaitable[DataResponse[Any]]]: ...
+
+        def __get__(
+            self, instance: object | None, owner: type
+        ) -> (
+            BaseEndpoint
+            | Callable[..., DataResponse[Any] | Awaitable[DataResponse[Any]]]
+        ):
             """
+            Descriptor protocol for type checking only.
+
+            At runtime, endpoints are replaced by EndpointDescriptor.
+            """
+            ...
+
+        def __call__(self, **kwargs: Any) -> DataResponse[Any]:
+            """Type hint for IDE support (never called at runtime)."""
             ...
 
 
