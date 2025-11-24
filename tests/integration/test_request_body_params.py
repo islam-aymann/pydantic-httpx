@@ -287,8 +287,7 @@ class TestBodyParameterExclusion:
         client = TestClient()
         client.search(
             json={"query": "test"},  # Body parameter
-            page=1,  # Query parameter
-            limit=10,  # Query parameter
+            params={"page": 1, "limit": 10},  # Query parameters
         )
 
         request = httpx_mock.get_request()

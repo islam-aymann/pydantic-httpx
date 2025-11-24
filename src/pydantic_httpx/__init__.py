@@ -30,28 +30,21 @@ from pydantic_httpx.validators import endpoint_validator
 
 __all__ = [
     "__version__",
-    # Config
     "ClientConfig",
     "ResourceConfig",
-    # Exceptions
     "ResponseError",
     "HTTPError",
     "ValidationError",
     "RequestTimeoutError",
     "RequestError",
-    # Response
     "DataResponse",
-    # Client & Resources
     "Client",
     "AsyncClient",
     "BaseResource",
-    # Endpoint Types (Protocol)
-    "Endpoint",  # Protocol for Endpoint[T]
-    # Validators
+    "Endpoint",
     "endpoint_validator",
-    # Endpoint Classes
     "BaseEndpoint",
-    "EndpointClass",  # The Endpoint class from endpoint.py
+    "EndpointClass",
     "GET",
     "POST",
     "PUT",
@@ -59,7 +52,6 @@ __all__ = [
     "DELETE",
     "HEAD",
     "OPTIONS",
-    # HTTP Types
     "HTTPMethod",
     "VALID_HTTP_METHODS",
 ]

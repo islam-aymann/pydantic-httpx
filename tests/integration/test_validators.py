@@ -143,7 +143,7 @@ class TestBeforeValidators:
         )
 
         client = ClientWithBeforeValidator()
-        user = client.get_user(id=1)
+        user = client.get_user(path={"id": 1})
 
         assert user.id == 1
         assert user.name == "Alice"
@@ -153,7 +153,7 @@ class TestBeforeValidators:
         client = ClientWithBeforeValidator()
 
         with pytest.raises(ValueError, match="User ID must be positive"):
-            client.get_user(id=0)
+            client.get_user(path={"id": 0})
 
     def test_before_validator_can_transform_params(self, httpx_mock):
         """Before validators can modify parameters."""
@@ -192,7 +192,7 @@ class TestAfterValidators:
         )
 
         client = ClientWithAfterValidator()
-        response = client.get_user(id=999)
+        response = client.get_user(path={"id": 999})
 
         # The validator transformed 404 into None
         assert response.data is None
@@ -205,7 +205,7 @@ class TestAfterValidators:
         )
 
         client = ClientWithAfterValidator()
-        response = client.get_user(id=1)
+        response = client.get_user(path={"id": 1})
 
         assert response.data.id == 1
         assert response.data.name == "Alice"
@@ -226,13 +226,13 @@ class TestWrapValidators:
         client = ClientWithWrapValidator()
 
         # First call - hits the API
-        user1 = client.get_user(id=1)
+        user1 = client.get_user(path={"id": 1})
         assert user1.id == 1
         assert user1.name == "Alice"
         assert len(httpx_mock.get_requests()) == 1
 
         # Second call - should use cache (no new request)
-        user2 = client.get_user(id=1)
+        user2 = client.get_user(path={"id": 1})
         assert user2.id == 1
         assert user2.name == "Alice"
         assert len(httpx_mock.get_requests()) == 1  # Still only 1 request
@@ -251,7 +251,7 @@ class TestResourceValidators:
         )
 
         client = ClientWithResource()
-        user = client.users.get(id=5)
+        user = client.users.get(path={"id": 5})
 
         assert user.id == 5
         assert user.name == "Bob"
@@ -261,7 +261,7 @@ class TestResourceValidators:
         client = ClientWithResource()
 
         with pytest.raises(ValueError, match="ID must be at least 1"):
-            client.users.get(id=0)
+            client.users.get(path={"id": 0})
 
     def test_resource_after_validator(self, httpx_mock):
         """Resource validators work for 'after' mode."""
@@ -310,7 +310,7 @@ class TestMultipleValidators:
         )
 
         client = MultiValidatorClient()
-        user = client.get_user(id=1)
+        user = client.get_user(path={"id": 1})
 
         assert user.id == 1
         assert execution_order == ["first", "second"]
@@ -327,7 +327,7 @@ class TestAsyncValidators:
         )
 
         async with AsyncClientWithBeforeValidator() as client:
-            user = await client.get_user(id=1)
+            user = await client.get_user(path={"id": 1})
 
             assert user.id == 1
             assert user.name == "Alice"
@@ -337,7 +337,7 @@ class TestAsyncValidators:
         """Async validators can reject invalid parameters."""
         async with AsyncClientWithBeforeValidator() as client:
             with pytest.raises(ValueError, match="User ID must be positive"):
-                await client.get_user(id=0)
+                await client.get_user(path={"id": 0})
 
 
 class TestValidatorEdgeCases:
@@ -373,7 +373,7 @@ class TestValidatorEdgeCases:
             get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
         client = RegularClient()
-        user = client.get_user(id=1)
+        user = client.get_user(path={"id": 1})
 
         assert user.id == 1
         assert user.name == "Alice"

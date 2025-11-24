@@ -19,10 +19,10 @@ class DataResponse(Generic[T]):
         response: The raw httpx.Response object.
 
     Example:
-        >>> response = client.users.get(id=1)
-        >>> user = response.data  # Type: User (validated)
-        >>> status = response.status_code  # 200
-        >>> headers = response.headers  # httpx.Headers
+        >>> response = client.users.get(path={"id": 1})
+        >>> user = response.data
+        >>> status = response.status_code
+        >>> headers = response.headers
     """
 
     def __init__(self, response: httpx.Response, data: T) -> None:
@@ -53,16 +53,13 @@ class DataResponse(Generic[T]):
         if hasattr(self._data, "model_dump"):
             result: dict[str, Any] = self._data.model_dump()
             return result
-        # Handle list of models
         if isinstance(self._data, list):
             return [
                 item.model_dump() if hasattr(item, "model_dump") else item
                 for item in self._data
             ]
-        # Handle dict or other types - already a dict
         if isinstance(self._data, dict):
             return self._data
-        # For other types (shouldn't happen but type-safe)
         return None
 
     @property
@@ -125,7 +122,6 @@ class DataResponse(Generic[T]):
     def __str__(self) -> str:
         return f"<{self.__class__.__name__} [{self.status_code}]>"
 
-    # Convenience: Allow direct attribute access to data
     def __getattr__(self, name: str) -> Any:
         """
         Allow direct access to data attributes.

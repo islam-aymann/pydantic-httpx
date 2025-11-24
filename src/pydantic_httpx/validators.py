@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any, Literal
 if TYPE_CHECKING:
     from pydantic_httpx.response import DataResponse
 
-# Validator modes (like Pydantic's field validators)
 ValidatorMode = Literal["before", "after", "wrap"]
 
 
@@ -85,7 +84,6 @@ def endpoint_validator(
     """
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        # Store validator metadata on the function
         if not hasattr(func, "_endpoint_validators"):
             func._endpoint_validators = []  # type: ignore[attr-defined]
 
@@ -118,13 +116,11 @@ def get_validators(cls: type) -> dict[str, list[ValidatorInfo]]:
     """
     validators: dict[str, list[ValidatorInfo]] = {}
 
-    # Iterate through all methods in the class
     for attr_name in dir(cls):
         attr = getattr(cls, attr_name, None)
         if attr is None:
             continue
 
-        # Check if this method has validator metadata
         validator_list = getattr(attr, "_endpoint_validators", None)
         if validator_list:
             for validator_info in validator_list:

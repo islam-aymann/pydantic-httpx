@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Protocol, TypeAlias
+from typing import TYPE_CHECKING, Any, Protocol, TypeAlias, overload
 
 from pydantic import BaseModel
 from typing_extensions import TypeVar
@@ -11,9 +11,7 @@ from typing_extensions import TypeVar
 if TYPE_CHECKING:
     from pydantic_httpx.response import DataResponse
 
-# TypeVars for Endpoint type parameters
-T = TypeVar("T")  # Response type for Endpoint
-# Request type with default=None (makes second parameter optional)
+T = TypeVar("T")
 T_Request = TypeVar("T_Request", covariant=True, default=None)
 
 
@@ -29,16 +27,12 @@ class HTTPMethod(str, Enum):
     OPTIONS = "OPTIONS"
 
 
-# Valid HTTP methods as a set (for validation)
 VALID_HTTP_METHODS: set[str] = {method.value for method in HTTPMethod}
-
-# Request/Response Models
 RequestModel: TypeAlias = type[BaseModel] | None
 ResponseModel: TypeAlias = (
     type[BaseModel] | type[list[BaseModel]] | type[dict[str, Any]] | type[None]
 )
 
-# Common type aliases
 Headers: TypeAlias = dict[str, str]
 QueryParams: TypeAlias = dict[str, Any]
 PathParams: TypeAlias = dict[str, Any]
@@ -65,19 +59,106 @@ class Endpoint(Protocol[T, T_Request]):
         >>> create: Annotated[Endpoint[User, CreateUserRequest], POST("")]
         >>>
         >>> # Returns DataResponse[User] with full metadata
-        >>> response = client.users.get(id=1)  # Type: DataResponse[User]
+        >>> response = client.users.get(path={"id": 1})  # Type: DataResponse[User]
         >>> print(f"Status: {response.status_code}")
         >>> print(f"User: {response.data.name}")
     """
 
-    def __call__(self, **kwargs: Any) -> DataResponse[T]:
+    @overload
+    def __call__(
+        self,
+        *,
+        path: dict[str, Any] | None = None,
+        params: BaseModel | dict[str, Any] | None = None,
+        json: dict[str, Any],
+        headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        timeout: float | None = None,
+    ) -> DataResponse[T]: ...
+
+    @overload
+    def __call__(
+        self,
+        *,
+        path: dict[str, Any] | None = None,
+        params: BaseModel | dict[str, Any] | None = None,
+        data: BaseModel | dict[str, Any],
+        headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        timeout: float | None = None,
+    ) -> DataResponse[T]: ...
+
+    @overload
+    def __call__(
+        self,
+        *,
+        path: dict[str, Any] | None = None,
+        params: BaseModel | dict[str, Any] | None = None,
+        content: bytes,
+        headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        timeout: float | None = None,
+    ) -> DataResponse[T]: ...
+
+    @overload
+    def __call__(
+        self,
+        *,
+        path: dict[str, Any] | None = None,
+        params: BaseModel | dict[str, Any] | None = None,
+        files: dict[str, Any],
+        headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        timeout: float | None = None,
+    ) -> DataResponse[T]: ...
+
+    @overload
+    def __call__(
+        self,
+        *,
+        path: dict[str, Any] | None = None,
+        params: BaseModel | dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        timeout: float | None = None,
+    ) -> DataResponse[T]: ...
+
+    def __call__(
+        self,
+        *,
+        path: dict[str, Any] | None = None,
+        params: BaseModel | dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        data: BaseModel | dict[str, Any] | None = None,
+        content: bytes | None = None,
+        files: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        timeout: float | None = None,
+    ) -> DataResponse[T]:
         """
         Execute the endpoint and return full response wrapper.
 
         Args:
-            **kwargs: Path parameters, query parameters, or request body data.
+            path: Path parameters as dict (e.g., {"id": 1} for /{id}).
+            params: Query parameters - accepts Pydantic BaseModel or dict.
+                    If endpoint has query_model, validates dict against it.
+            json: JSON request body as dict (will be serialized to JSON).
+            data: Request body data - accepts Pydantic BaseModel or dict.
+                  If endpoint has request_model, validates dict against it.
+            content: Raw bytes content for request body.
+            files: Files to upload as multipart/form-data.
+            headers: Custom HTTP headers.
+            cookies: Custom cookies.
+            timeout: Request timeout in seconds (overrides client/endpoint timeout).
 
         Returns:
             DataResponse[T]: Response wrapper with validated data and metadata.
+
+        Note:
+            - Body parameters (json, data, content, files) are mutually exclusive
+            - Path parameters: Passed as path dict (e.g., path={"id": 1})
+            - Query parameters: Passed as params dict/model
+            - Request body: Use json, data, content, or files (only one)
         """
         ...

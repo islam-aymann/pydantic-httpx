@@ -60,7 +60,7 @@ class Client:
         >>>     users: UserResource
         >>>
         >>> client = APIClient()
-        >>> user = client.users.get(id=1)  # Returns User directly
+        >>> response = client.users.get(path={"id": 1})
     """
 
     client_config: ClientConfig = {}
@@ -69,7 +69,6 @@ class Client:
 
     def __init__(self) -> None:
         """Initialize the client and bind resources."""
-        # Create httpx client
         self._httpx_client = httpx.Client(
             base_url=self.client_config["base_url"],
             timeout=self.client_config["timeout"],
@@ -77,10 +76,7 @@ class Client:
             follow_redirects=self.client_config["follow_redirects"],
         )
 
-        # Extract and store validators for this client
         self._validators = get_validators(self.__class__)
-
-        # Initialize and bind resources
         self._init_resources()
 
     def __init_subclass__(cls) -> None:

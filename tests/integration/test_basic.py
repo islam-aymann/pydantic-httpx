@@ -76,7 +76,7 @@ class TestIntegration:
         )
 
         client = APIClient()
-        response = client.users.get(id=1)
+        response = client.users.get(path={"id": 1})
 
         assert isinstance(response, DataResponse)
         assert isinstance(response.data, User)
@@ -137,7 +137,7 @@ class TestIntegration:
         )
 
         client = APIClient()
-        response = client.users.delete(id=1)
+        response = client.users.delete(path={"id": 1})
 
         assert isinstance(response, DataResponse)
         assert response.data is None
@@ -152,7 +152,7 @@ class TestIntegration:
         )
 
         client = APIClient()
-        response = client.users.get(id=42)
+        response = client.users.get(path={"id": 42})
 
         assert response.data.id == 42
 
@@ -167,7 +167,7 @@ class TestIntegration:
         client = APIClient()
 
         with pytest.raises(ValidationError) as exc_info:
-            client.users.get(id=1)
+            client.users.get(path={"id": 1})
 
         assert "Response validation failed" in str(exc_info.value)
         assert exc_info.value.validation_errors
@@ -191,7 +191,7 @@ class TestIntegration:
         client = ErrorClient()
 
         with pytest.raises(HTTPError) as exc_info:
-            client.users.get(id=999)
+            client.users.get(path={"id": 999})
 
         assert exc_info.value.status_code == codes.NOT_FOUND
         assert exc_info.value.is_client_error
@@ -205,7 +205,7 @@ class TestIntegration:
         )
 
         with APIClient() as client:
-            response = client.users.get(id=1)
+            response = client.users.get(path={"id": 1})
             assert response.data.name == "John"
 
     def test_data_dump_method(self, httpx_mock: HTTPXMock) -> None:
@@ -217,7 +217,7 @@ class TestIntegration:
         )
 
         client = APIClient()
-        response = client.users.get(id=1)
+        response = client.users.get(path={"id": 1})
 
         data_dict = response.data_dump()
         assert isinstance(data_dict, dict)
@@ -228,7 +228,7 @@ class TestIntegration:
         resource = UserResource()
 
         with pytest.raises(RuntimeError, match="not bound to a client"):
-            resource.get(id=1)
+            resource.get(path={"id": 1})
 
     def test_response_endpoint_returns_full_response(
         self,
@@ -247,7 +247,7 @@ class TestIntegration:
             get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
         client = FullResponseClient()
-        result = client.get_user(id=1)
+        result = client.get_user(path={"id": 1})
 
         # Verify result is DataResponse[User]
         assert isinstance(result, DataResponse)

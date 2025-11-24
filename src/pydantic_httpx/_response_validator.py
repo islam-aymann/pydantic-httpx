@@ -45,11 +45,9 @@ def validate_response(response: httpx.Response, model: type) -> Any:
         ValidationError: If response validation fails.
         RequestError: If response parsing fails.
     """
-    # Handle None responses (e.g., DELETE with 204)
     if model is type(None) or response.status_code == httpx.codes.NO_CONTENT:
         return None
 
-    # Parse JSON response
     data = None
     try:
         data = response.json()
@@ -59,7 +57,6 @@ def validate_response(response: httpx.Response, model: type) -> Any:
             original_exception=e,
         ) from e
 
-    # Validate based on model type
     try:
         return _validate_data_with_model(data, model)
     except PydanticValidationError as e:
@@ -87,16 +84,13 @@ def _validate_data_with_model(data: Any, model: type) -> Any:
     """
     origin = get_origin(model)
 
-    # Handle list of models: list[User]
     if origin is list:
         item_type = get_args(model)[0] if get_args(model) else dict
         if isinstance(item_type, type) and issubclass(item_type, BaseModel):
             return [item_type(**item) for item in data]
         return data
 
-    # Handle single Pydantic model: User
     if isinstance(model, type) and issubclass(model, BaseModel):
         return model(**data)
 
-    # Return raw data for dict or other types
     return data
