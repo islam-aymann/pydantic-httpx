@@ -15,7 +15,7 @@ A type-safe HTTP client library that combines the power of HTTPX with Pydantic v
 - ✅ Full parameter validation via type hints (query, path, headers, cookies)
 - ✅ Removed deprecated runtime parameters in favor of type-safe approach
 - ✅ Clean, comment-free codebase with concise docstrings
-- ✅ 97% test coverage with 194 passing tests
+- ✅ Comprehensive test suite with high coverage
 
 ## What It Does
 
