@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any, overload
 from urllib.parse import quote
 
 import httpx
-from pydantic import BaseModel
 
 from pydantic_httpx.types import HTTPMethod
 
@@ -19,26 +18,10 @@ if TYPE_CHECKING:
 
 @dataclass
 class BaseEndpoint:
-    """
-    Base endpoint class without method validation.
-
-    This is the base class for all endpoint types. It provides common
-    functionality for path handling and parameter extraction.
-
-    Attributes:
-        method: HTTP method enum.
-        path: URL path template with optional parameters (e.g., "/{id}").
-        query_model: Optional Pydantic model for query parameters.
-        timeout: Optional request-specific timeout override.
-        headers: Optional request-specific headers.
-        cookies: Optional request-specific cookies.
-        auth: Optional authentication (Basic, Digest, Bearer, or custom).
-        follow_redirects: Optional override for redirect following behavior.
-    """
+    """Base endpoint class for HTTP requests."""
 
     method: HTTPMethod
     path: str
-    query_model: type[BaseModel] | None = None
     timeout: float | None = None
     headers: dict[str, str] = field(default_factory=dict)
     cookies: dict[str, str] | None = None
@@ -181,7 +164,6 @@ class GET(BaseEndpoint):
     def __init__(
         self,
         path: str,
-        query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
         cookies: dict[str, str] | None = None,
@@ -191,7 +173,6 @@ class GET(BaseEndpoint):
         super().__init__(
             method=HTTPMethod.GET,
             path=path,
-            query_model=query_model,
             timeout=timeout,
             headers=headers or {},
             cookies=cookies,
@@ -212,7 +193,6 @@ class POST(BaseEndpoint):
     def __init__(
         self,
         path: str,
-        query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
         cookies: dict[str, str] | None = None,
@@ -222,7 +202,6 @@ class POST(BaseEndpoint):
         super().__init__(
             method=HTTPMethod.POST,
             path=path,
-            query_model=query_model,
             timeout=timeout,
             headers=headers or {},
             cookies=cookies,
@@ -243,7 +222,6 @@ class PUT(BaseEndpoint):
     def __init__(
         self,
         path: str,
-        query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
         cookies: dict[str, str] | None = None,
@@ -253,7 +231,6 @@ class PUT(BaseEndpoint):
         super().__init__(
             method=HTTPMethod.PUT,
             path=path,
-            query_model=query_model,
             timeout=timeout,
             headers=headers or {},
             cookies=cookies,
@@ -274,7 +251,6 @@ class PATCH(BaseEndpoint):
     def __init__(
         self,
         path: str,
-        query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
         cookies: dict[str, str] | None = None,
@@ -284,7 +260,6 @@ class PATCH(BaseEndpoint):
         super().__init__(
             method=HTTPMethod.PATCH,
             path=path,
-            query_model=query_model,
             timeout=timeout,
             headers=headers or {},
             cookies=cookies,
@@ -305,7 +280,6 @@ class DELETE(BaseEndpoint):
     def __init__(
         self,
         path: str,
-        query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
         cookies: dict[str, str] | None = None,
@@ -315,7 +289,6 @@ class DELETE(BaseEndpoint):
         super().__init__(
             method=HTTPMethod.DELETE,
             path=path,
-            query_model=query_model,
             timeout=timeout,
             headers=headers or {},
             cookies=cookies,
@@ -336,7 +309,6 @@ class HEAD(BaseEndpoint):
     def __init__(
         self,
         path: str,
-        query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
         cookies: dict[str, str] | None = None,
@@ -346,7 +318,6 @@ class HEAD(BaseEndpoint):
         super().__init__(
             method=HTTPMethod.HEAD,
             path=path,
-            query_model=query_model,
             timeout=timeout,
             headers=headers or {},
             cookies=cookies,
@@ -367,7 +338,6 @@ class OPTIONS(BaseEndpoint):
     def __init__(
         self,
         path: str,
-        query_model: type[BaseModel] | None = None,
         timeout: float | None = None,
         headers: dict[str, str] | None = None,
         cookies: dict[str, str] | None = None,
@@ -377,7 +347,6 @@ class OPTIONS(BaseEndpoint):
         super().__init__(
             method=HTTPMethod.OPTIONS,
             path=path,
-            query_model=query_model,
             timeout=timeout,
             headers=headers or {},
             cookies=cookies,

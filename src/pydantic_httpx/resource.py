@@ -39,6 +39,10 @@ class EndpointDescriptor:
         endpoint: BaseEndpoint,
         response_type: type,
         request_model: type | None = None,
+        query_model: type | None = None,
+        path_model: type | None = None,
+        headers_model: type | None = None,
+        cookies_model: type | None = None,
     ) -> None:
         """
         Initialize endpoint descriptor.
@@ -47,12 +51,20 @@ class EndpointDescriptor:
             name: The attribute name of the endpoint.
             endpoint: The BaseEndpoint metadata.
             response_type: Expected response type (Endpoint[T]).
-            request_model: Optional Pydantic model for request validation.
+            request_model: Optional Pydantic model for request body validation.
+            query_model: Optional Pydantic model for query parameters validation.
+            path_model: Optional Pydantic model for path parameters validation.
+            headers_model: Optional Pydantic model for headers validation.
+            cookies_model: Optional Pydantic model for cookies validation.
         """
         self.name = name
         self.endpoint = endpoint
         self.response_type = response_type
         self.request_model = request_model
+        self.query_model = query_model
+        self.path_model = path_model
+        self.headers_model = headers_model
+        self.cookies_model = cookies_model
 
     def __set_name__(self, owner: type, name: str) -> None:
         """
@@ -169,6 +181,10 @@ class EndpointDescriptor:
                         response_type=self.response_type,
                         endpoint=self.endpoint,
                         request_model=self.request_model,
+                        query_model=self.query_model,
+                        path_model=self.path_model,
+                        headers_model=self.headers_model,
+                        cookies_model=self.cookies_model,
                         **request_params,
                     )
                     return result  # type: ignore[no-any-return]
@@ -247,6 +263,10 @@ class EndpointDescriptor:
                         response_type=self.response_type,
                         endpoint=self.endpoint,
                         request_model=self.request_model,
+                        query_model=self.query_model,
+                        path_model=self.path_model,
+                        headers_model=self.headers_model,
+                        cookies_model=self.cookies_model,
                         **request_params,
                     )
                     return result  # type: ignore[no-any-return]
@@ -351,6 +371,10 @@ class BaseResource:
             endpoint_spec = None
             endpoint_protocol = None
             request_model = None
+            query_model = None
+            path_model = None
+            headers_model = None
+            cookies_model = None
 
             origin = get_origin(annotation)
             if origin is not None:
@@ -378,11 +402,26 @@ class BaseResource:
                     protocol_args = get_args(endpoint_protocol)
                     if len(protocol_args) > 1 and protocol_args[1] is not type(None):
                         request_model = protocol_args[1]
+                    if len(protocol_args) > 2 and protocol_args[2] is not type(None):
+                        query_model = protocol_args[2]
+                    if len(protocol_args) > 3 and protocol_args[3] is not type(None):
+                        path_model = protocol_args[3]
+                    if len(protocol_args) > 4 and protocol_args[4] is not type(None):
+                        headers_model = protocol_args[4]
+                    if len(protocol_args) > 5 and protocol_args[5] is not type(None):
+                        cookies_model = protocol_args[5]
 
                 response_type = endpoint_protocol
 
                 descriptor = EndpointDescriptor(
-                    attr_name, endpoint_spec, response_type, request_model
+                    name=attr_name,
+                    endpoint=endpoint_spec,
+                    response_type=response_type,
+                    request_model=request_model,
+                    query_model=query_model,
+                    path_model=path_model,
+                    headers_model=headers_model,
+                    cookies_model=cookies_model,
                 )
                 setattr(cls, attr_name, descriptor)
                 descriptor.__set_name__(cls, attr_name)

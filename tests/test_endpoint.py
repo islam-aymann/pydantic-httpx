@@ -33,7 +33,6 @@ class TestEndpoint:
 
         assert endpoint.method == "GET"
         assert endpoint.path == "/users"
-        assert endpoint.query_model is None
         assert endpoint.timeout is None
         assert endpoint.headers == {}
 
@@ -62,12 +61,6 @@ class TestEndpoint:
         endpoint = Endpoint("GET", "")
 
         assert endpoint.path == "/"
-
-    def test_endpoint_with_query_model(self) -> None:
-        """Test endpoint with query parameters model."""
-        endpoint = Endpoint("GET", "/users", query_model=User)
-
-        assert endpoint.query_model is User
 
     def test_endpoint_with_timeout(self) -> None:
         """Test endpoint with custom timeout."""
@@ -156,7 +149,6 @@ class TestMethodSpecificEndpoints:
 
         assert endpoint.method == HTTPMethod.GET
         assert endpoint.path == "/users/{id}"
-        assert endpoint.query_model is None
 
     def test_post_endpoint(self) -> None:
         """Test POST endpoint class."""
@@ -205,14 +197,12 @@ class TestMethodSpecificEndpoints:
         headers = {"X-Custom": "value"}
         endpoint = GET(
             "/users/{id}",
-            query_model=User,
             timeout=10.0,
             headers=headers,
         )
 
         assert endpoint.method == HTTPMethod.GET
         assert endpoint.path == "/users/{id}"
-        assert endpoint.query_model is User
         assert endpoint.timeout == 10.0
         assert endpoint.headers == headers
 

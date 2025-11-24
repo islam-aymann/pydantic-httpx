@@ -1,8 +1,4 @@
-"""Internal module for building HTTP requests with validation.
-
-This module contains shared logic for request parameter handling,
-validation, and preparation used by both sync and async clients.
-"""
+"""Internal module for building HTTP requests with validation."""
 
 from __future__ import annotations
 
@@ -21,6 +17,40 @@ BODY_PARAMS = frozenset({"json", "data", "files", "content"})
 VALIDATED_BODY_PARAMS = frozenset({"json", "data"})
 PASSTHROUGH_BODY_PARAMS = frozenset({"files", "content"})
 SPECIAL_PARAMS = frozenset({"path", "params", "headers", "cookies", "timeout"})
+VALIDATABLE_PARAMS = frozenset({"params", "path", "headers", "cookies"})
+
+
+def validate_parameter(
+    param_name: str,
+    param_data: Any,
+    validation_model: type | None,
+    method_str: str,
+    path: str,
+) -> Any:
+    """Validate parameter using Pydantic model if provided."""
+    if param_data is None:
+        return None
+
+    if isinstance(param_data, BaseModel):
+        return param_data.model_dump(exclude_none=True)
+
+    if validation_model is not None and isinstance(param_data, dict):
+        try:
+            validated_model = validation_model(**param_data)
+            return validated_model.model_dump(exclude_none=True)
+        except PydanticValidationError as e:
+            dummy_response = httpx.Response(
+                status_code=httpx.codes.BAD_REQUEST,
+                request=httpx.Request(method_str, path),
+            )
+            raise ValidationError(
+                f"Validation failed for '{param_name}' parameter",
+                dummy_response,
+                e.errors(),
+                raw_data=param_data,
+            ) from e
+
+    return param_data
 
 
 def build_request_params(
@@ -28,19 +58,12 @@ def build_request_params(
     client_config: ClientConfig,
     kwargs: dict[str, Any],
     request_model: type | None = None,
+    query_model: type | None = None,
+    path_model: type | None = None,
+    headers_model: type | None = None,
+    cookies_model: type | None = None,
 ) -> dict[str, Any]:
-    """
-    Build httpx request parameters from endpoint config and kwargs.
-
-    Args:
-        endpoint: Endpoint metadata with headers, timeout, etc.
-        client_config: Client configuration with base settings.
-        kwargs: User-provided parameters (path, query, body).
-        request_model: Optional Pydantic model for request validation.
-
-    Returns:
-        Dictionary of parameters to pass to httpx.request().
-    """
+    """Build httpx request parameters from endpoint and client config."""
     request_params: dict[str, Any] = {
         "headers": {**client_config["headers"], **endpoint.headers},
         "timeout": endpoint.timeout or client_config["timeout"],
@@ -65,21 +88,7 @@ def validate_and_add_body_params(
     method_str: str,
     path: str,
 ) -> None:
-    """
-    Validate and add body parameters (json, data, files, content) to request.
-
-    Modifies request_params in place.
-
-    Args:
-        request_params: Dictionary to add body parameters to.
-        kwargs: User-provided parameters.
-        request_model: Optional Pydantic model for validation.
-        method_str: HTTP method string (for error messages).
-        path: Request path (for error messages).
-
-    Raises:
-        ValidationError: If request validation fails.
-    """
+    """Validate and add body parameters to request."""
     for param in VALIDATED_BODY_PARAMS:
         if param not in kwargs:
             continue
@@ -117,43 +126,46 @@ def validate_and_add_body_params(
             request_params[param] = kwargs[param]
 
 
-def add_query_params(
+def validate_and_add_params(
     request_params: dict[str, Any],
     kwargs: dict[str, Any],
+    query_model: type | None,
+    path_model: type | None,
+    headers_model: type | None,
+    cookies_model: type | None,
     endpoint: BaseEndpoint,
+    method_str: str,
+    path: str,
 ) -> None:
-    """
-    Add query parameters to request from params dict.
-
-    Modifies request_params in place.
-
-    Args:
-        request_params: Dictionary to add query parameters to.
-        kwargs: User-provided parameters (should contain 'params' key if any).
-        endpoint: Endpoint metadata with optional query_model.
-    """
+    """Validate and add query, headers, and cookies parameters to request."""
     params_data = kwargs.get("params")
+    if params_data is not None:
+        validated_params = validate_parameter(
+            "params", params_data, query_model, method_str, path
+        )
+        if validated_params is not None:
+            request_params["params"] = validated_params
 
-    if params_data is None:
-        return
+    headers_data = kwargs.get("headers")
+    if headers_data is not None:
+        validated_headers = validate_parameter(
+            "headers", headers_data, headers_model, method_str, path
+        )
+        if validated_headers is not None:
+            request_params["headers"] = {
+                **request_params.get("headers", {}),
+                **validated_headers,
+            }
 
-    if isinstance(params_data, BaseModel):
-        request_params["params"] = params_data.model_dump()
-    elif endpoint.query_model:
-        query_data = endpoint.query_model(**params_data)
-        request_params["params"] = query_data.model_dump()
-    else:
-        request_params["params"] = params_data
+    cookies_data = kwargs.get("cookies")
+    if cookies_data is not None:
+        validated_cookies = validate_parameter(
+            "cookies", cookies_data, cookies_model, method_str, path
+        )
+        if validated_cookies is not None:
+            request_params["cookies"] = validated_cookies
 
 
 def convert_method_to_string(method: HTTPMethod | str) -> str:
-    """
-    Convert HTTPMethod enum to string.
-
-    Args:
-        method: HTTP method enum or string.
-
-    Returns:
-        Method as string.
-    """
+    """Convert HTTPMethod enum to string."""
     return method.value if isinstance(method, HTTPMethod) else method
