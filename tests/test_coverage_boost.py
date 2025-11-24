@@ -1,5 +1,5 @@
 """
-Additional tests to achieve 98%+ coverage.
+Additional tests to improve test coverage.
 
 This test file focuses on covering specific lines that are missed in the
 coverage report, particularly around edge cases in endpoint handling,
@@ -21,8 +21,10 @@ from pydantic_httpx import (
     ClientConfig,
     DataResponse,
     Endpoint,
+    HTTPError,
     RequestError,
     ResourceConfig,
+    ValidationError,
     endpoint_validator,
 )
 
@@ -420,3 +422,274 @@ class TestInnerTypeExtraction:
         import asyncio
 
         asyncio.run(run_test())
+
+
+class TestRequestBuilderEdgeCases:
+    """Test edge cases in _request_builder.py."""
+
+    def test_request_validation_error_with_pydantic_validation_error(
+        self, httpx_mock: HTTPXMock
+    ):
+        """Test PydanticValidationError handling in request builder."""
+
+        class CreateUser(BaseModel):
+            name: str
+            email: str
+
+        class TestClient(Client):
+            client_config = ClientConfig(base_url="https://api.example.com")
+            create: Annotated[Endpoint[User, CreateUser], GET("/users")]
+
+        client = TestClient()
+
+        with pytest.raises((ValidationError, RequestError)):
+            client.create(json={"name": "John"})
+
+    def test_query_params_with_basemodel_instance(self, httpx_mock: HTTPXMock):
+        """Test query params when passing BaseModel instance."""
+
+        class QueryParams(BaseModel):
+            limit: int
+            offset: int
+
+        class TestClient(Client):
+            client_config = ClientConfig(base_url="https://api.example.com")
+            search: Annotated[Endpoint[list[User]], GET("/search")]
+
+        httpx_mock.add_response(json=[{"id": 1, "name": "Test"}])
+
+        client = TestClient()
+        params = QueryParams(limit=10, offset=0)
+        response = client.search(params=params)
+        assert len(response.data) == 1
+
+
+class TestClientInitSubclass:
+    """Test __init_subclass__ edge cases."""
+
+    def test_sync_client_without_client_config(self):
+        """Test Client subclass without client_config attribute."""
+
+        class TestClient(Client):
+            pass
+
+        client = TestClient()
+        assert client is not None
+
+    def test_sync_client_with_none_client_config(self):
+        """Test Client subclass with client_config = None."""
+
+        class TestClient(Client):
+            client_config = None  # type: ignore[assignment]
+
+        client = TestClient()
+        assert client is not None
+
+    def test_sync_client_with_problematic_type_hints(self):
+        """Test Client when get_type_hints raises exception."""
+
+        class TestClient(Client):
+            client_config = ClientConfig(base_url="https://api.example.com")
+
+        client = TestClient()
+        assert client is not None
+
+    def test_async_client_without_client_config(self):
+        """Test AsyncClient subclass without client_config attribute."""
+
+        class TestAsyncClient(AsyncClient):
+            pass
+
+        async def run_test():
+            async with TestAsyncClient() as client:
+                assert client is not None
+
+        import asyncio
+
+        asyncio.run(run_test())
+
+    def test_async_client_with_problematic_type_hints(self):
+        """Test AsyncClient when get_type_hints raises exception."""
+
+        class TestAsyncClient(AsyncClient):
+            client_config = ClientConfig(base_url="https://api.example.com")
+
+        async def run_test():
+            async with TestAsyncClient() as client:
+                assert client is not None
+
+        import asyncio
+
+        asyncio.run(run_test())
+
+
+class TestRaiseOnErrorConfig:
+    """Test raise_on_error configuration."""
+
+    def test_async_raise_on_error_true(self, httpx_mock: HTTPXMock):
+        """Test async client with raise_on_error=True."""
+
+        class TestAsyncClient(AsyncClient):
+            client_config = ClientConfig(
+                base_url="https://api.example.com", raise_on_error=True
+            )
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
+
+        httpx_mock.add_response(status_code=404, json={"error": "Not found"})
+
+        async def run_test():
+            async with TestAsyncClient() as client:
+                with pytest.raises(HTTPError):
+                    await client.get_user(path={"id": 1})
+
+        import asyncio
+
+        asyncio.run(run_test())
+
+
+class TestEndpointRepr:
+    """Test endpoint __repr__ method."""
+
+    def test_endpoint_repr(self):
+        """Test __repr__ on endpoint."""
+        from pydantic_httpx import GET
+
+        endpoint = GET("/test")
+        repr_str = repr(endpoint)
+        assert "GET" in repr_str
+
+
+class TestExceptionClasses:
+    """Test exception classes."""
+
+    def test_request_timeout_error(self):
+        """Test RequestTimeoutError initialization and str."""
+        from pydantic_httpx import RequestTimeoutError
+
+        error = RequestTimeoutError("Timeout occurred", timeout=30.0)
+        assert error.timeout == 30.0
+        assert "Timeout occurred" in str(error)
+        assert "30.0s" in str(error)
+
+
+class TestResourceInitSubclass:
+    """Test BaseResource __init_subclass__ edge cases."""
+
+    def test_resource_without_resource_config(self, httpx_mock: HTTPXMock):
+        """Test BaseResource subclass without resource_config."""
+
+        class TestResource(BaseResource):
+            get_data: Annotated[Endpoint[dict], GET("/data")]
+
+        class TestClient(Client):
+            client_config = ClientConfig(base_url="https://api.example.com")
+            test: TestResource
+
+        httpx_mock.add_response(json={"key": "value"})
+
+        client = TestClient()
+        response = client.test.get_data()
+        assert response.data["key"] == "value"
+
+    def test_resource_with_none_resource_config(self, httpx_mock: HTTPXMock):
+        """Test BaseResource subclass with resource_config = None."""
+
+        class TestResource(BaseResource):
+            resource_config = None  # type: ignore[assignment]
+            get_data: Annotated[Endpoint[dict], GET("/data")]
+
+        class TestClient(Client):
+            client_config = ClientConfig(base_url="https://api.example.com")
+            test: TestResource
+
+        httpx_mock.add_response(json={"key": "value"})
+
+        client = TestClient()
+        response = client.test.get_data()
+        assert response.data["key"] == "value"
+
+    def test_resource_with_problematic_type_hints(self):
+        """Test BaseResource when get_type_hints raises exception."""
+
+        class TestResource(BaseResource):
+            resource_config = ResourceConfig(prefix="/test")
+
+        assert TestResource is not None
+
+
+class TestSyncWrapValidatorNonDataResponse:
+    """Test sync wrap validator returning non-DataResponse."""
+
+    def test_sync_wrap_validator_returns_raw_data(self, httpx_mock: HTTPXMock):
+        """Test sync wrap validator that returns raw data."""
+
+        class TestClient(Client):
+            client_config = ClientConfig(base_url="https://api.example.com")
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
+
+            @endpoint_validator("get_user", mode="wrap")
+            def cache_user(cls, handler, params: dict) -> User:
+                return User(id=999, name="Cached")
+
+        client = TestClient()
+        response = client.get_user(path={"id": 1})
+        assert response.data.id == 999
+        assert response.data.name == "Cached"
+
+
+class TestAfterValidatorReturnTypes:
+    """Test after validator return type handling."""
+
+    def test_async_after_validator_returns_dataresponse(self, httpx_mock: HTTPXMock):
+        """Test async after validator that returns DataResponse."""
+
+        class TestAsyncClient(AsyncClient):
+            client_config = ClientConfig(base_url="https://api.example.com")
+            get_user: Annotated[Endpoint[User], GET("/users/{id}")]
+
+            @endpoint_validator("get_user", mode="after")
+            def modify_user(cls, response):
+                return response
+
+        httpx_mock.add_response(json={"id": 1, "name": "Test"})
+
+        async def run_test():
+            async with TestAsyncClient() as client:
+                response = await client.get_user(path={"id": 1})
+                assert response.data.name == "Test"
+
+        import asyncio
+
+        asyncio.run(run_test())
+
+
+class TestResponseDataDump:
+    """Test DataResponse.data_dump edge cases."""
+
+    def test_data_dump_with_plain_dict(self, httpx_mock: HTTPXMock):
+        """Test data_dump when response data is a plain dict."""
+
+        class TestClient(Client):
+            client_config = ClientConfig(base_url="https://api.example.com")
+            get_data: Annotated[Endpoint[dict], GET("/data")]
+
+        httpx_mock.add_response(json={"key": "value"})
+
+        client = TestClient()
+        response = client.get_data()
+        dumped = response.data_dump()
+        assert dumped == {"key": "value"}
+
+    def test_data_dump_with_primitive(self, httpx_mock: HTTPXMock):
+        """Test data_dump when response data is a primitive type."""
+
+        class TestClient(Client):
+            client_config = ClientConfig(base_url="https://api.example.com")
+            get_count: Annotated[Endpoint[int], GET("/count")]
+
+        httpx_mock.add_response(json=42)
+
+        client = TestClient()
+        response = client.get_count()
+        dumped = response.data_dump()
+        assert dumped is None

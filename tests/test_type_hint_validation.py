@@ -3,7 +3,7 @@
 from typing import Annotated
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from pydantic_httpx import (
     GET,
@@ -133,11 +133,9 @@ class TestPathParameterValidation:
         class StrictPathParams(BaseModel):
             """Path parameters model with strict validation."""
 
-            user_id: int
+            model_config = ConfigDict(str_strip_whitespace=False)
 
-            class Config:
-                # Use strict mode to prevent coercion
-                str_strip_whitespace = False
+            user_id: int
 
         class APIResource(BaseResource):
             get: Annotated[
