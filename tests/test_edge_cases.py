@@ -37,10 +37,7 @@ class TestGetTypeHintsFallback:
 
     def test_client_with_problematic_annotations(self, httpx_mock: HTTPXMock):
         """Test Client when get_type_hints fails and falls back to __annotations__."""
-        # This is tricky to test because we need to make get_type_hints fail
-        # One way is to use forward references that can't be resolved
 
-        # Create a client with an endpoint
         class TestClient(Client):
             client_config = ClientConfig(base_url="https://api.example.com")
             get_user: Annotated[Endpoint[User], GET("/users/{id}")]
@@ -48,7 +45,7 @@ class TestGetTypeHintsFallback:
         httpx_mock.add_response(json={"id": 1, "name": "Alice"})
 
         client = TestClient()
-        user = client.get_user(id=1)
+        user = client.get_user(path={"id": 1})
 
         assert user.id == 1
         assert user.name == "Alice"
@@ -64,7 +61,7 @@ class TestGetTypeHintsFallback:
 
         async def run_test():
             async with TestAsyncClient() as client:
-                user = await client.get_user(id=1)
+                user = await client.get_user(path={"id": 1})
                 assert user.id == 1
                 assert user.name == "Alice"
 
@@ -86,13 +83,11 @@ class TestJsonBodyWithoutModel:
         httpx_mock.add_response(json={"id": 1, "name": "Bob"})
 
         client = TestClient()
-        # Pass raw JSON without model validation
         user = client.create_user(json={"name": "Bob", "email": "bob@example.com"})
 
         assert user.id == 1
         assert user.name == "Bob"
 
-        # Verify the request was made with raw JSON
         request = httpx_mock.get_request()
         assert request.method == "POST"
 
@@ -121,8 +116,6 @@ class TestRequestTimeoutError:
 
     def test_timeout_error_str_representation(self):
         """Test that RequestTimeoutError.__str__ includes timeout value."""
-        # Note: The current implementation has a bug where it passes None to parent
-        # We'll test the __str__ method directly by bypassing the constructor issue
         error = RequestTimeoutError.__new__(RequestTimeoutError)
         error.message = "Connection timed out"
         error.timeout = 30.0
@@ -133,7 +126,6 @@ class TestRequestTimeoutError:
         assert "30.0" in error_str
         assert "timeout" in error_str.lower()
 
-        # Check the attributes
         assert error.timeout == 30.0
         assert error.message == "Connection timed out"
 
@@ -149,7 +141,6 @@ class TestEndpointDescriptorMethods:
         endpoint = GET("/users/{id}")
         descriptor = EndpointDescriptor("test", endpoint, User)
 
-        # Simulate __set_name__ being called by the descriptor protocol
         descriptor.__set_name__(Client, "my_endpoint")
 
         assert descriptor.name == "my_endpoint"
@@ -162,7 +153,6 @@ class TestEndpointDescriptorMethods:
         endpoint = GET("/users/{id}")
         descriptor = EndpointDescriptor("test", endpoint, User)
 
-        # Calling the descriptor directly should raise NotImplementedError
         with pytest.raises(NotImplementedError) as exc_info:
             descriptor(id=1)
 
@@ -181,16 +171,11 @@ class TestWrapValidatorReturnTypes:
 
             @endpoint_validator("get_user", mode="wrap")
             def cached_response(cls, handler, params: dict) -> User:
-                # Return User directly, not DataResponse
-                # This tests code path where wrap validator doesn't return
-                # DataResponse
                 return User(id=99, name="Cached User")
 
-        # No httpx_mock needed since wrap validator bypasses the request
         client = TestClient()
-        user = client.get_user(id=1)
+        user = client.get_user(path={"id": 1})
 
-        # Should get the cached user, not the API response
         assert user.id == 99
         assert user.name == "Cached User"
 
@@ -214,7 +199,7 @@ class TestWrapValidatorReturnTypes:
 
         async def run_test():
             async with TestAsyncClient() as client:
-                response = await client.get_user(id=5)
+                response = await client.get_user(path={"id": 5})
                 assert isinstance(response, DataResponse)
                 assert response.data.id == 5
                 assert response.data.name == "David"
@@ -282,7 +267,7 @@ class TestResponseParsingErrors:
         client = TestClient()
 
         with pytest.raises(RequestError) as exc_info:
-            client.get_user(id=1)
+            client.get_user(path={"id": 1})
 
         assert "Failed to parse response" in str(exc_info.value)
 
@@ -299,7 +284,7 @@ class TestResponseParsingErrors:
         async def run_test():
             async with TestAsyncClient() as client:
                 with pytest.raises(RequestError) as exc_info:
-                    await client.get_user(id=1)
+                    await client.get_user(path={"id": 1})
 
                 assert "Failed to parse response" in str(exc_info.value)
 

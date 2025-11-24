@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pydantic_httpx.config import ClientConfig, ResourceConfig
 
-# Default client configuration
 CLIENT_CONFIG_DEFAULTS: ClientConfig = {
     "base_url": "",
     "timeout": 30.0,
@@ -25,7 +24,6 @@ CLIENT_CONFIG_DEFAULTS: ClientConfig = {
     "auth": None,
 }
 
-# Default resource configuration
 RESOURCE_CONFIG_DEFAULTS: ResourceConfig = {
     "prefix": "",
     "timeout": None,

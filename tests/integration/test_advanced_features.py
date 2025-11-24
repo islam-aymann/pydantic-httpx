@@ -92,7 +92,7 @@ class TestQueryParameters:
         client = APIClient()
         # Using search endpoint and passing query params as kwargs
         # (bypassing validation)
-        response = client.users.search(status="active", limit=5)
+        response = client.users.search(params={"status": "active", "limit": 5})
 
         assert len(response.data) == 1
         # Verify the request was made with correct query params
@@ -113,7 +113,7 @@ class TestQueryParameters:
         )
 
         client = APIClient()
-        response = client.users.search(status="active", limit=10)
+        response = client.users.search(params={"status": "active", "limit": 10})
 
         assert len(response.data) == 2
         # Verify the request was made
@@ -134,7 +134,7 @@ class TestCustomHeaders:
         )
 
         client = APIClient()
-        response = client.users.get_with_headers(id=1)
+        response = client.users.get_with_headers(path={"id": 1})
 
         assert response.data.name == "John"
         # Verify the custom header was sent
@@ -159,7 +159,7 @@ class TestCustomHeaders:
         )
 
         client = ClientWithHeaders()
-        response = client.users.get_with_headers(id=1)
+        response = client.users.get_with_headers(path={"id": 1})
 
         assert response.data.name == "John"
         # Verify both headers were sent
@@ -181,7 +181,7 @@ class TestCookies:
         )
 
         client = APIClient()
-        response = client.users.get_with_cookies(id=1)
+        response = client.users.get_with_cookies(path={"id": 1})
 
         assert response.data.name == "John"
         # Verify the cookie was sent
@@ -202,7 +202,7 @@ class TestAuthentication:
         )
 
         client = APIClient()
-        response = client.users.get_with_auth(id=1)
+        response = client.users.get_with_auth(path={"id": 1})
 
         assert response.data.name == "John"
         # Verify auth header was sent
@@ -233,7 +233,7 @@ class TestAuthentication:
         )
 
         client = CustomAuthClient()
-        response = client.users.get(id=1)
+        response = client.users.get(path={"id": 1})
 
         assert response.data.name == "John"
         # Verify custom auth header was added
@@ -254,7 +254,7 @@ class TestTimeout:
         )
 
         client = APIClient()
-        response = client.users.get_with_timeout(id=1)
+        response = client.users.get_with_timeout(path={"id": 1})
 
         assert response.data.name == "John"
         # The timeout is passed to httpx, but we can't easily verify it was used
@@ -317,7 +317,7 @@ class TestURLEncoding:
         )
 
         client = ArticleClient()
-        response = client.articles.get(title="hello world")
+        response = client.articles.get(path={"title": "hello world"})
 
         assert response.data["title"] == "hello world"
 
@@ -341,6 +341,6 @@ class TestURLEncoding:
         )
 
         client = SearchClient()
-        response = client.search.get(query=query)
+        response = client.search.get(path={"query": query})
 
         assert response.data["query"] == query

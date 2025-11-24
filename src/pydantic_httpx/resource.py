@@ -114,25 +114,18 @@ class EndpointDescriptor:
             Returns sync function for BaseClient, async function for AsyncBaseClient.
         """
         if instance is None:
-            # Accessed from class, return descriptor itself
             return self
 
-        # Determine the client and prefix
-        # If instance is a Resource, get client from _client attribute
-        # If instance is a Client, use it directly
         if hasattr(instance, "_client"):
-            # This is a Resource instance
             client = instance._client
             resource_config = getattr(instance, "resource_config", {})
             prefix = resource_config.get("prefix", "") if resource_config else ""
         else:
-            # This is a Client instance (direct endpoint on client)
             client = instance
             prefix = ""
 
-        # Check client type using the _is_async_client flag
         if client and getattr(client, "_is_async_client", False):
-            # Return async method for async clients
+
             async def async_endpoint_method(**kwargs: Any) -> DataResponse[Any]:
                 if client is None:
                     raise RuntimeError(
@@ -141,66 +134,56 @@ class EndpointDescriptor:
                         f"Make sure it is properly initialized."
                     )
 
-                # Get validators for this endpoint from resource or client
-                # Resource validators take precedence
                 validators = getattr(instance, "_validators", {}).get(self.name, [])
                 if not validators:
                     validators = getattr(client, "_validators", {}).get(self.name, [])
 
-                # Separate validators by mode
                 before_validators = [v for v in validators if v.mode == "before"]
                 after_validators = [v for v in validators if v.mode == "after"]
                 wrap_validators = [v for v in validators if v.mode == "wrap"]
 
-                # Apply "before" validators to transform parameters
-                params = kwargs
+                params = dict(kwargs)
+                path_params = params.pop("path", {})
+                params.update(path_params)
+
                 if before_validators:
                     params = apply_before_validators(
                         before_validators, params, instance
                     )
 
-                # Define handler for wrap validators
                 async def handler(params: dict[str, Any]) -> DataResponse[Any]:
-                    # Format path with parameters
+                    path_param_names = self.endpoint.get_path_params()
                     path_params = {
-                        k: v
-                        for k, v in params.items()
-                        if k in self.endpoint.get_path_params()
+                        k: params[k] for k in path_param_names if k in params
                     }
                     formatted_path = self.endpoint.format_path(**path_params)
                     full_path = f"{prefix}{formatted_path}".rstrip("/") or "/"
 
-                    # Remaining kwargs are query/body params (handled by client)
-                    non_path_params = {
-                        k: v for k, v in params.items() if k not in path_params
+                    request_params = {
+                        k: v for k, v in params.items() if k not in path_param_names
                     }
 
-                    # Execute async request via client
                     result = await client._execute_request(
                         method=self.endpoint.method,
                         path=full_path,
                         response_type=self.response_type,
                         endpoint=self.endpoint,
                         request_model=self.request_model,
-                        **non_path_params,
+                        **request_params,
                     )
                     return result  # type: ignore[no-any-return]
 
-                # Apply "wrap" validators (if any)
                 if wrap_validators:
-                    # Apply wrap validators (they control the execution)
-                    # For async, we need to make handler that wrap can call
+
                     async def wrapped_handler(p: dict[str, Any]) -> DataResponse[Any]:
                         return await handler(p)
 
-                    # Only first wrap validator (multiple wraps not supported)
                     result = apply_wrap_validator(
                         wrap_validators[0],
                         wrapped_handler,  # type: ignore[arg-type]
                         params,
                         instance,
                     )
-                    # If wrap validator returns awaitable, await it
                     if hasattr(result, "__await__"):
                         result = await result
                     if isinstance(result, DataResponse):
@@ -208,22 +191,19 @@ class EndpointDescriptor:
                     else:
                         response = DataResponse(None, result)  # type: ignore[arg-type]
                 else:
-                    # No wrap validators, execute normally
                     response = await handler(params)
 
-                # Apply "after" validators to transform response
                 result = response
                 if after_validators:
                     result = apply_after_validators(
                         after_validators, response, instance
                     )
 
-                # Always return full DataResponse[T]
                 return result if isinstance(result, DataResponse) else response
 
             return async_endpoint_method
         else:
-            # Return sync method for sync clients
+
             def sync_endpoint_method(**kwargs: Any) -> DataResponse[Any]:
                 if client is None:
                     raise RuntimeError(
@@ -232,55 +212,46 @@ class EndpointDescriptor:
                         f"Make sure it is properly initialized."
                     )
 
-                # Get validators for this endpoint from resource or client
-                # Resource validators take precedence
                 validators = getattr(instance, "_validators", {}).get(self.name, [])
                 if not validators:
                     validators = getattr(client, "_validators", {}).get(self.name, [])
 
-                # Separate validators by mode
                 before_validators = [v for v in validators if v.mode == "before"]
                 after_validators = [v for v in validators if v.mode == "after"]
                 wrap_validators = [v for v in validators if v.mode == "wrap"]
 
-                # Apply "before" validators to transform parameters
-                params = kwargs
+                params = dict(kwargs)
+                path_params = params.pop("path", {})
+                params.update(path_params)
+
                 if before_validators:
                     params = apply_before_validators(
                         before_validators, params, instance
                     )
 
-                # Define handler for wrap validators
                 def handler(params: dict[str, Any]) -> DataResponse[Any]:
-                    # Format path with parameters
+                    path_param_names = self.endpoint.get_path_params()
                     path_params = {
-                        k: v
-                        for k, v in params.items()
-                        if k in self.endpoint.get_path_params()
+                        k: params[k] for k in path_param_names if k in params
                     }
                     formatted_path = self.endpoint.format_path(**path_params)
                     full_path = f"{prefix}{formatted_path}".rstrip("/") or "/"
 
-                    # Remaining kwargs are query/body params (handled by client)
-                    non_path_params = {
-                        k: v for k, v in params.items() if k not in path_params
+                    request_params = {
+                        k: v for k, v in params.items() if k not in path_param_names
                     }
 
-                    # Execute sync request via client
                     result = client._execute_request(
                         method=self.endpoint.method,
                         path=full_path,
                         response_type=self.response_type,
                         endpoint=self.endpoint,
                         request_model=self.request_model,
-                        **non_path_params,
+                        **request_params,
                     )
                     return result  # type: ignore[no-any-return]
 
-                # Apply "wrap" validators (if any)
                 if wrap_validators:
-                    # Apply wrap validators (they control the execution)
-                    # Only first wrap validator (multiple wraps not supported)
                     result = apply_wrap_validator(
                         wrap_validators[0], handler, params, instance
                     )
@@ -289,17 +260,14 @@ class EndpointDescriptor:
                     else:
                         response = DataResponse(None, result)  # type: ignore[arg-type]
                 else:
-                    # No wrap validators, execute normally
                     response = handler(params)
 
-                # Apply "after" validators to transform response
                 result = response
                 if after_validators:
                     result = apply_after_validators(
                         after_validators, response, instance
                     )
 
-                # Always return full DataResponse[T]
                 return result if isinstance(result, DataResponse) else response
 
             return sync_endpoint_method
@@ -352,7 +320,6 @@ class BaseResource:
             client: The client instance this resource is bound to (sync or async).
         """
         self._client = client
-        # Extract validators for this resource class
         self._validators = get_validators(self.__class__)
 
     def __init_subclass__(cls) -> None:

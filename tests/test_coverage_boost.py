@@ -52,7 +52,7 @@ class TestAsyncWrapValidatorEdgeCases:
 
         async def run_test():
             async with TestAsyncClient() as client:
-                user = await client.get_user(id=1)
+                user = await client.get_user(path={"id": 1})
                 assert user.id == 42
                 assert user.name == "Cached Async User"
 
@@ -77,7 +77,7 @@ class TestAsyncWrapValidatorEdgeCases:
 
         async def run_test():
             async with TestAsyncClient() as client:
-                user = await client.get_user(id=10)
+                user = await client.get_user(path={"id": 10})
                 assert user.id == 10
                 assert user.name == "Test"
 
@@ -115,7 +115,7 @@ class TestResourceAfterValidatorWithEndpoint:
         httpx_mock.add_response(json={"id": 7, "name": "Modified"})
 
         client = TestClient()
-        result = client.users.get(id=7)
+        result = client.users.get(path={"id": 7})
 
         # The result should be DataResponse with modified User
         assert isinstance(result, DataResponse)
@@ -141,7 +141,7 @@ class TestEndpointWithCookiesAuthRedirects:
 
         async def run_test():
             async with TestAsyncClient() as client:
-                user = await client.get_user(id=1)
+                user = await client.get_user(path={"id": 1})
                 assert user.name == "Alice"
 
                 # Check cookies were sent
@@ -165,7 +165,7 @@ class TestEndpointWithCookiesAuthRedirects:
 
         async def run_test():
             async with TestAsyncClient() as client:
-                user = await client.get_user(id=2)
+                user = await client.get_user(path={"id": 2})
                 assert user.name == "Bob"
 
                 # Check auth was sent
@@ -192,7 +192,7 @@ class TestEndpointWithCookiesAuthRedirects:
 
         async def run_test():
             async with TestAsyncClient() as client:
-                user = await client.get_user(id=3)
+                user = await client.get_user(path={"id": 3})
                 assert user.name == "Charlie"
 
         import asyncio
@@ -218,7 +218,7 @@ class TestClientTimeoutErrors:
         client = TestClient()
 
         with pytest.raises(RequestError) as exc_info:
-            client.get_user(id=1)
+            client.get_user(path={"id": 1})
 
         assert "timeout" in str(exc_info.value).lower() or "Request timeout" in str(
             exc_info.value
@@ -237,7 +237,7 @@ class TestClientTimeoutErrors:
         client = TestClient()
 
         with pytest.raises(RequestError) as exc_info:
-            client.get_user(id=1)
+            client.get_user(path={"id": 1})
 
         assert (
             "Connection failed" in str(exc_info.value)
@@ -258,7 +258,7 @@ class TestClientTimeoutErrors:
         async def run_test():
             async with TestAsyncClient() as client:
                 with pytest.raises(RequestError) as exc_info:
-                    await client.get_user(id=1)
+                    await client.get_user(path={"id": 1})
 
                 assert "timeout" in str(
                     exc_info.value
@@ -280,7 +280,7 @@ class TestClientTimeoutErrors:
         async def run_test():
             async with TestAsyncClient() as client:
                 with pytest.raises(RequestError) as exc_info:
-                    await client.get_user(id=1)
+                    await client.get_user(path={"id": 1})
 
                 assert (
                     "Network error" in str(exc_info.value)
@@ -306,7 +306,7 @@ class TestQueryParamsWithoutModel:
         httpx_mock.add_response(json=[{"id": 1, "name": "Alice"}])
 
         client = TestClient()
-        response = client.list_users(limit=10, offset=0)
+        response = client.list_users(params={"limit": 10, "offset": 0})
 
         assert isinstance(response, DataResponse)
         assert len(response.data) == 1
@@ -327,7 +327,7 @@ class TestQueryParamsWithoutModel:
 
         async def run_test():
             async with TestAsyncClient() as client:
-                response = await client.list_users(page=1)
+                response = await client.list_users(params={"page": 1})
                 assert isinstance(response, DataResponse)
                 assert len(response.data) == 1
                 assert response.data[0].name == "Bob"
@@ -375,7 +375,7 @@ class TestResponseValidationEdgeCases:
         async def run_test():
             async with TestAsyncClient() as client:
                 with pytest.raises(RequestError) as exc_info:
-                    await client.get_user(id=1)
+                    await client.get_user(path={"id": 1})
 
                 assert "Failed to parse response" in str(exc_info.value)
 

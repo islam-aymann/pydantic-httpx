@@ -129,7 +129,7 @@ class TestAssignmentSyntaxResource:
         )
 
         client = APIClient()
-        response = client.users.get(id=1)
+        response = client.users.get(path={"id": 1})
 
         assert response.status_code == 200
         assert response.data.id == 1
@@ -174,7 +174,7 @@ class TestAssignmentSyntaxResource:
         )
 
         client = APIClient()
-        response = client.users.delete(id=1)
+        response = client.users.delete(path={"id": 1})
 
         assert response.status_code == 204
 
@@ -212,8 +212,8 @@ class TestAssignmentSyntaxVsAnnotated:
         client_assignment = ClientAssignment()
         client_annotated = ClientAnnotated()
 
-        response_assignment = client_assignment.users.get(id=1)
-        response_annotated = client_annotated.users.get(id=1)
+        response_assignment = client_assignment.users.get(path={"id": 1})
+        response_annotated = client_annotated.users.get(path={"id": 1})
 
         # Both should have identical responses
         assert response_assignment.status_code == response_annotated.status_code
@@ -234,7 +234,7 @@ class TestAssignmentSyntaxDirectEndpoints:
         )
 
         client = APIClientAssignment()
-        response = client.get_user(id=1)
+        response = client.get_user(path={"id": 1})
 
         assert response.status_code == 200
         assert response.data.id == 1
@@ -249,7 +249,7 @@ class TestAssignmentSyntaxDirectEndpoints:
         )
 
         client = APIClientAnnotated()
-        response = client.get_user(id=1)
+        response = client.get_user(path={"id": 1})
 
         assert response.status_code == 200
         assert response.data.id == 1
@@ -275,8 +275,8 @@ class TestAssignmentSyntaxDirectEndpoints:
         client_assignment = APIClientAssignment()
         client_annotated = APIClientAnnotated()
 
-        response_assignment = client_assignment.get_user(id=1)
-        response_annotated = client_annotated.get_user(id=1)
+        response_assignment = client_assignment.get_user(path={"id": 1})
+        response_annotated = client_annotated.get_user(path={"id": 1})
 
         assert response_assignment.status_code == response_annotated.status_code
         assert response_assignment.data.id == response_annotated.data.id
@@ -295,7 +295,7 @@ class TestAssignmentSyntaxAsync:
         )
 
         async with AsyncAPIClientAssignment() as client:
-            response = await client.get_user(id=1)
+            response = await client.get_user(path={"id": 1})
 
         assert response.status_code == 200
         assert response.data.id == 1
@@ -311,7 +311,7 @@ class TestAssignmentSyntaxAsync:
         )
 
         async with AsyncAPIClientAnnotated() as client:
-            response = await client.get_user(id=1)
+            response = await client.get_user(path={"id": 1})
 
         assert response.status_code == 200
         assert response.data.id == 1
@@ -334,10 +334,10 @@ class TestAssignmentSyntaxAsync:
         )
 
         async with AsyncAPIClientAssignment() as client_assignment:
-            response_assignment = await client_assignment.get_user(id=1)
+            response_assignment = await client_assignment.get_user(path={"id": 1})
 
         async with AsyncAPIClientAnnotated() as client_annotated:
-            response_annotated = await client_annotated.get_user(id=1)
+            response_annotated = await client_annotated.get_user(path={"id": 1})
 
         assert response_assignment.status_code == response_annotated.status_code
         assert response_assignment.data.id == response_annotated.data.id
@@ -376,7 +376,7 @@ class TestAssignmentSyntaxMixed:
         client = APIClient()
 
         # Both should work
-        response_get = client.users.get(id=1)
+        response_get = client.users.get(path={"id": 1})
         response_list = client.users.list_all()
 
         assert response_get.status_code == 200

@@ -47,7 +47,6 @@ class BaseEndpoint:
 
     def __post_init__(self) -> None:
         """Normalize path after initialization."""
-        # Ensure path starts with / (empty path becomes /)
         if not self.path:
             self.path = "/"
         elif not self.path.startswith("/"):
@@ -65,7 +64,6 @@ class BaseEndpoint:
             >>> endpoint.get_path_params()
             ['id', 'post_id']
         """
-        # Match {param_name} patterns
         pattern = r"\{([^}]+)\}"
         return re.findall(pattern, self.path)
 
@@ -93,10 +91,8 @@ class BaseEndpoint:
         if missing_params:
             raise ValueError(f"Missing required path parameters: {missing_params}")
 
-        # Replace {param} with actual values (URL-encoded)
         path = self.path
         for param_name, param_value in params.items():
-            # URL-encode the parameter value (safe='' means encode everything)
             encoded_value = quote(str(param_value), safe="")
             path = path.replace(f"{{{param_name}}}", encoded_value)
 
@@ -152,7 +148,6 @@ class Endpoint(BaseEndpoint):
 
     def __post_init__(self) -> None:
         """Validate and convert method, then normalize path."""
-        # Convert string to HTTPMethod enum if needed
         if isinstance(self.method, str):
             try:
                 self.method = HTTPMethod(self.method)
@@ -162,7 +157,6 @@ class Endpoint(BaseEndpoint):
                     f"Must be one of {list(HTTPMethod)}"
                 ) from None
 
-        # Call parent's __post_init__ for path normalization
         super().__post_init__()
 
 

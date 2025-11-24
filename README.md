@@ -68,7 +68,7 @@ class APIClient(Client):
 
 # Use it - returns DataResponse[User]!
 client = APIClient()
-response = client.get_user(id=1)  # Type: DataResponse[User]
+response = client.get_user(path={"id": 1})  # Type: DataResponse[User]
 print(response.status_code)  # 200
 print(response.data.name)  # Access validated data
 print(response.headers)  # Access response headers
@@ -95,7 +95,7 @@ class APIClient(Client):
 
 # Use it - all endpoints return DataResponse[T]!
 client = APIClient()
-user_response = client.users.get(id=1)
+user_response = client.users.get(path={"id": 1})
 print(user_response.data.name)  # Access data via .data property
 
 users_response = client.users.list_all()
@@ -234,7 +234,7 @@ class AsyncAPIClient(AsyncClient):
 # Use it with async/await!
 async def main():
     async with AsyncAPIClient() as client:
-        response = await client.users.get(id=1)  # Returns DataResponse[User]
+        response = await client.users.get(path={"id": 1})  # Returns DataResponse[User]
         print(response.data.name)  # Access validated data
         print(response.status_code)  # Access metadata
 ```
@@ -249,7 +249,7 @@ class AsyncAPIClient(AsyncClient):
 
 async def main():
     async with AsyncAPIClient() as client:
-        response = await client.get_user(id=1)  # Returns DataResponse[User]
+        response = await client.get_user(path={"id": 1})  # Returns DataResponse[User]
         print(response.data.name)
 ```
 
@@ -272,7 +272,7 @@ class UserResource(BaseResource):
 
 # Usage - automatic validation
 client = APIClient()
-response = client.users.search(status="active", limit=5)
+response = client.users.search(params={"status": "active", "limit": 5})
 print(len(response.data))  # List of users
 ```
 
@@ -399,13 +399,13 @@ class APIClient(Client):
     @endpoint_validator("get_user", mode="before")
     def validate_id(cls, params: dict) -> dict:
         """Validate ID before making request."""
-        if params.get("id", 0) <= 0:
+        if params.get("path", {}).get("id", 0) <= 0:
             raise ValueError("User ID must be positive")
         return params
 
 client = APIClient()
-response = client.get_user(id=1)  # ✅ Valid
-# client.get_user(id=0)  # ❌ Raises ValueError
+response = client.get_user(path={"id": 1})  # ✅ Valid
+# client.get_user(path={"id": 0})  # ❌ Raises ValueError
 ```
 
 ### After Validators
@@ -446,7 +446,7 @@ class APIClient(Client):
     @endpoint_validator("get_user", mode="wrap")
     def cache_user(cls, handler, params: dict) -> DataResponse[User]:
         """Cache user responses."""
-        user_id = params["id"]
+        user_id = params["path"]["id"]
 
         # Check cache
         if user_id in cls._cache:
@@ -458,8 +458,8 @@ class APIClient(Client):
         return response
 
 client = APIClient()
-response1 = client.get_user(id=1)  # Hits API
-response2 = client.get_user(id=1)  # Returns cached
+response1 = client.get_user(path={"id": 1})  # Hits API
+response2 = client.get_user(path={"id": 1})  # Returns cached
 ```
 
 ### Resource Validators
@@ -474,7 +474,7 @@ class UserResource(BaseResource):
 
     @endpoint_validator("get", mode="before")
     def validate_get_id(cls, params: dict) -> dict:
-        if params.get("id", 0) < 1:
+        if params.get("path", {}).get("id", 0) < 1:
             raise ValueError("ID must be at least 1")
         return params
 
@@ -483,8 +483,8 @@ class APIClient(Client):
     users: UserResource
 
 client = APIClient()
-response = client.users.get(id=5)  # ✅ Valid
-# client.users.get(id=0)  # ❌ Raises ValueError
+response = client.users.get(path={"id": 5})  # ✅ Valid
+# client.users.get(path={"id": 0})  # ❌ Raises ValueError
 ```
 
 ## Current Features

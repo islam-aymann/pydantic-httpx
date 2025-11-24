@@ -56,7 +56,7 @@ class TestAsyncBasicOperations:
         )
 
         async with AsyncAPIClient() as client:
-            response = await client.users.get(id=1)
+            response = await client.users.get(path={"id": 1})
 
             assert response.data.id == 1
             assert response.data.name == "John Doe"
@@ -112,7 +112,7 @@ class TestAsyncWithSyncComparison:
         )
 
         async with AsyncAPIClient() as client:
-            response = await client.users.get(id=1)
+            response = await client.users.get(path={"id": 1})
             assert response.data.name == "John"
 
     def test_same_resource_sync(self, httpx_mock: HTTPXMock) -> None:
@@ -130,7 +130,7 @@ class TestAsyncWithSyncComparison:
         )
 
         with SyncAPIClient() as client:
-            response = client.users.get(id=1)
+            response = client.users.get(path={"id": 1})
             assert response.data.name == "John"
 
 
@@ -156,7 +156,7 @@ class TestAsyncQueryParameters:
         )
 
         async with SearchClient() as client:
-            response = await client.search.search(q="test", limit=5)
+            response = await client.search.search(params={"q": "test", "limit": 5})
             assert len(response.data) == 1
             assert response.data[0].name == "Test User"
 
@@ -176,7 +176,7 @@ class TestAsyncContextManager:
         )
 
         async with AsyncAPIClient() as client:
-            await client.users.get(id=1)
+            await client.users.get(path={"id": 1})
             # Client should be usable inside the context
 
         # After exiting the context, the underlying httpx client should be closed
@@ -191,6 +191,6 @@ class TestAsyncContextManager:
         )
 
         client = AsyncAPIClient()
-        await client.users.get(id=1)
+        await client.users.get(path={"id": 1})
         await client.close()
         # Verify no errors when manually closing

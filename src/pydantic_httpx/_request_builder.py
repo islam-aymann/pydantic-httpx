@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
+from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 
 from pydantic_httpx.config import ClientConfig
@@ -16,14 +17,10 @@ from pydantic_httpx.endpoint import BaseEndpoint
 from pydantic_httpx.exceptions import ValidationError
 from pydantic_httpx.types import HTTPMethod
 
-# Body parameter names (mutually exclusive in httpx)
 BODY_PARAMS = frozenset({"json", "data", "files", "content"})
-
-# Body parameters that support Pydantic validation
 VALIDATED_BODY_PARAMS = frozenset({"json", "data"})
-
-# Body parameters that pass through to httpx without validation
 PASSTHROUGH_BODY_PARAMS = frozenset({"files", "content"})
+SPECIAL_PARAMS = frozenset({"path", "params", "headers", "cookies", "timeout"})
 
 
 def build_request_params(
@@ -44,13 +41,11 @@ def build_request_params(
     Returns:
         Dictionary of parameters to pass to httpx.request().
     """
-    # Start with headers and timeout
     request_params: dict[str, Any] = {
         "headers": {**client_config["headers"], **endpoint.headers},
         "timeout": endpoint.timeout or client_config["timeout"],
     }
 
-    # Add optional endpoint-specific settings
     if endpoint.cookies is not None:
         request_params["cookies"] = endpoint.cookies
 
@@ -85,7 +80,6 @@ def validate_and_add_body_params(
     Raises:
         ValidationError: If request validation fails.
     """
-    # Handle validated body parameters (json, data)
     for param in VALIDATED_BODY_PARAMS:
         if param not in kwargs:
             continue
@@ -93,14 +87,20 @@ def validate_and_add_body_params(
         body_data = kwargs[param]
 
         if request_model is not None:
-            # Validate with Pydantic model
             try:
-                validated_request = request_model(**body_data)
+                validated_request: BaseModel
+                if isinstance(body_data, BaseModel):
+                    if isinstance(body_data, request_model):
+                        validated_request = body_data  # type: ignore[assignment]
+                    else:
+                        validated_request = request_model(**body_data.model_dump())
+                else:
+                    validated_request = request_model(**body_data)
+
                 request_params[param] = validated_request.model_dump()
             except PydanticValidationError as e:
-                # Create dummy response for ValidationError
                 dummy_response = httpx.Response(
-                    status_code=400,
+                    status_code=httpx.codes.BAD_REQUEST,
                     request=httpx.Request(method_str, path),
                 )
                 raise ValidationError(
@@ -110,10 +110,8 @@ def validate_and_add_body_params(
                     raw_data=body_data,
                 ) from e
         else:
-            # No validation, pass through
             request_params[param] = body_data
 
-    # Handle pass-through body parameters (files, content)
     for param in PASSTHROUGH_BODY_PARAMS:
         if param in kwargs:
             request_params[param] = kwargs[param]
@@ -125,28 +123,27 @@ def add_query_params(
     endpoint: BaseEndpoint,
 ) -> None:
     """
-    Add query parameters to request, excluding body parameters.
+    Add query parameters to request from params dict.
 
     Modifies request_params in place.
 
     Args:
         request_params: Dictionary to add query parameters to.
-        kwargs: User-provided parameters.
+        kwargs: User-provided parameters (should contain 'params' key if any).
         endpoint: Endpoint metadata with optional query_model.
     """
-    # Extract non-body parameters as query params
-    query_kwargs = {k: v for k, v in kwargs.items() if k not in BODY_PARAMS}
+    params_data = kwargs.get("params")
 
-    if not query_kwargs:
+    if params_data is None:
         return
 
-    if endpoint.query_model:
-        # Validate query params with Pydantic model
-        query_data = endpoint.query_model(**query_kwargs)
+    if isinstance(params_data, BaseModel):
+        request_params["params"] = params_data.model_dump()
+    elif endpoint.query_model:
+        query_data = endpoint.query_model(**params_data)
         request_params["params"] = query_data.model_dump()
     else:
-        # Pass through without validation
-        request_params["params"] = query_kwargs
+        request_params["params"] = params_data
 
 
 def convert_method_to_string(method: HTTPMethod | str) -> str:
