@@ -42,8 +42,8 @@ class UserResource(BaseResource):
     get: Annotated[Endpoint[User], GET("/{id}")]
     create: Annotated[Endpoint[User], POST("")]
 
-    # Endpoint with query model
-    search: Annotated[Endpoint[list[User]], GET("/search", query_model=SearchParams)]
+    # Endpoint with query model validation via type hints
+    search: Annotated[Endpoint[list[User], None, SearchParams], GET("/search")]
 
     # Endpoint with custom headers
     get_with_headers: Annotated[

@@ -8,14 +8,14 @@
 
 A type-safe HTTP client library that combines the power of HTTPX with Pydantic validation. Build declarative API clients with automatic response validation, full IDE support, and clean Python syntax inspired by FastAPI.
 
-**Status**: 🚧 Alpha (v0.3.0) - Not yet published to PyPI. Use via GitHub installation.
+**Status**: 🚧 Alpha (v0.4.0) - Not yet published to PyPI. Use via GitHub installation.
 
-**Recent Updates** (v0.3.0):
-- ✅ Simplified unified API - all endpoints return `DataResponse[T]`
-- ✅ Full type safety with `Annotated` syntax (zero type checker errors)
-- ✅ Consistent response handling across all endpoints
-- ✅ Professional code quality with 96% test coverage
-- ✅ Automatic request validation from type hints
+**Recent Updates** (v0.4.0):
+- ✅ Modernized to Python 3.10+ with pipe operator syntax (`X | Y`)
+- ✅ Full parameter validation via type hints (query, path, headers, cookies)
+- ✅ Removed deprecated runtime parameters in favor of type-safe approach
+- ✅ Clean, comment-free codebase with concise docstrings
+- ✅ 97% test coverage with 194 passing tests
 
 ## What It Does
 
@@ -255,25 +255,86 @@ async def main():
 
 ## Advanced Features
 
-### Query Parameters with Validation
+### Parameter Validation with Type Hints
+
+Use additional type parameters to automatically validate query, path, headers, and cookies:
 
 ```python
+from pydantic import BaseModel
 from pydantic_httpx import BaseResource, ResourceConfig
 
 class SearchParams(BaseModel):
     status: str
     limit: int = 10
 
+class PathParams(BaseModel):
+    user_id: int
+    post_id: int
+
 class UserResource(BaseResource):
     resource_config = ResourceConfig(prefix="/users")
 
-    # With Pydantic validation
-    search: Annotated[Endpoint[list[User]], GET("/search", query_model=SearchParams)]
+    # Third type parameter: query params validation
+    search: Annotated[Endpoint[list[User], None, SearchParams], GET("/search")]
+
+    # Fourth and fifth type parameters: path and headers validation
+    get_post: Annotated[Endpoint[dict, None, None, PathParams], GET("/{user_id}/posts/{post_id}")]
 
 # Usage - automatic validation
 client = APIClient()
+
+# Query parameters validated with SearchParams
 response = client.users.search(params={"status": "active", "limit": 5})
 print(len(response.data))  # List of users
+
+# Path parameters validated with PathParams
+post = client.users.get_post(path={"user_id": 1, "post_id": 42})
+```
+
+**Type Parameters Order**:
+1. **T** (required): Response model type
+2. **T_Request_co** (optional): Request body validation model
+3. **T_Query_co** (optional): Query parameters validation model
+4. **T_Path_co** (optional): Path parameters validation model
+5. **T_Headers_co** (optional): Headers validation model
+6. **T_Cookies_co** (optional): Cookies validation model
+
+**Example with all parameters**:
+```python
+class CreateRequest(BaseModel):
+    name: str
+    email: str
+
+class QueryParams(BaseModel):
+    include_metadata: bool = False
+
+class PathParams(BaseModel):
+    org_id: int
+
+class HeaderParams(BaseModel):
+    x_api_key: str
+
+class CookieParams(BaseModel):
+    session_id: str
+
+class UserResource(BaseResource):
+    resource_config = ResourceConfig(prefix="/orgs/{org_id}/users")
+
+    # All parameters with validation
+    create: Annotated[
+        Endpoint[User, CreateRequest, QueryParams, PathParams, HeaderParams, CookieParams],
+        POST("")
+    ]
+
+# Usage
+client = APIClient()
+response = client.users.create(
+    path={"org_id": 1},
+    params={"include_metadata": True},
+    json={"name": "John", "email": "john@example.com"},
+    headers={"x_api_key": "secret"},
+    cookies={"session_id": "abc123"}
+)
 ```
 
 ### Authentication, Headers, and Timeouts
@@ -339,27 +400,40 @@ dependencies = [
 
 ### Unified Endpoint API
 
-All endpoints use `Endpoint[T, TRequest]` with `Annotated` syntax for full type safety:
+All endpoints use `Endpoint[T, ...]` with `Annotated` syntax for full type safety:
 
 - **Type-safe declarations**: `Annotated[Endpoint[User], GET("/users/{id}")]`
 - **Returns DataResponse[T]**: Access both validated data and HTTP metadata
-- **Optional request validation**: Add second type parameter for automatic validation
+- **Optional validation**: Add type parameters for automatic validation of requests, queries, paths, headers, and cookies
 - **Zero type checker errors**: Full IDE support with Annotated syntax
 
 **Type Parameters**:
 1. **T** (required): Response type - what the endpoint returns (e.g., `User`, `list[User]`, `dict`)
-2. **TRequest** (optional): Request model for automatic request body validation
+2. **T_Request_co** (optional): Request body validation model
+3. **T_Query_co** (optional): Query parameters validation model
+4. **T_Path_co** (optional): Path parameters validation model
+5. **T_Headers_co** (optional): Headers validation model
+6. **T_Cookies_co** (optional): Cookies validation model
 
 **Examples**:
 ```python
 # Simple endpoint - response only
 get_user: Annotated[Endpoint[User], GET("/users/{id}")]
 
-# With request validation
+# With request body validation
 create_user: Annotated[Endpoint[User, CreateUserRequest], POST("/users")]
 
-# List response
-list_users: Annotated[Endpoint[list[User]], GET("/users")]
+# With query parameter validation
+search_users: Annotated[Endpoint[list[User], None, SearchParams], GET("/users/search")]
+
+# With path parameter validation
+get_post: Annotated[Endpoint[Post, None, None, PathParams], GET("/{user_id}/posts/{post_id}")]
+
+# Multiple validations combined
+create_org_user: Annotated[
+    Endpoint[User, CreateUserRequest, QueryParams, PathParams],
+    POST("/orgs/{org_id}/users")
+]
 ```
 
 ### Flexible Organization

@@ -9,10 +9,10 @@ from typing_extensions import TypeVar, get_args, get_origin, get_type_hints
 
 from pydantic_httpx._defaults import CLIENT_CONFIG_DEFAULTS
 from pydantic_httpx._request_builder import (
-    add_query_params,
     build_request_params,
     convert_method_to_string,
     validate_and_add_body_params,
+    validate_and_add_params,
 )
 from pydantic_httpx._response_validator import extract_response_model, validate_response
 from pydantic_httpx.config import ClientConfig
@@ -168,38 +168,42 @@ class AsyncClient:
         response_type: type,
         endpoint: BaseEndpoint,
         request_model: type | None = None,
+        query_model: type | None = None,
+        path_model: type | None = None,
+        headers_model: type | None = None,
+        cookies_model: type | None = None,
         **kwargs: Any,
     ) -> DataResponse[Any]:
-        """
-        Execute an async HTTP request and validate the response.
-
-        Args:
-            method: HTTP method (GET, POST, etc.).
-            path: Full request path.
-            response_type: Expected response type (DataResponse[T]).
-            endpoint: BaseEndpoint metadata.
-            request_model: Optional Pydantic model for request validation.
-            **kwargs: Request parameters (query params, body, etc.).
-
-        Returns:
-            DataResponse with validated data.
-
-        Raises:
-            HTTPError: If response status code indicates an error.
-            ValidationError: If response validation fails.
-            RequestError: If the request fails to execute.
-        """
+        """Execute async HTTP request with validation and return response."""
         try:
             inner_type = extract_response_model(response_type)
             method_str = convert_method_to_string(method)
 
             request_params = build_request_params(
-                endpoint, self.client_config, kwargs, request_model
+                endpoint,
+                self.client_config,
+                kwargs,
+                request_model,
+                query_model,
+                path_model,
+                headers_model,
+                cookies_model,
             )
             validate_and_add_body_params(
                 request_params, kwargs, request_model, method_str, path
             )
-            add_query_params(request_params, kwargs, endpoint)
+
+            validate_and_add_params(
+                request_params,
+                kwargs,
+                query_model,
+                path_model,
+                headers_model,
+                cookies_model,
+                endpoint,
+                method_str,
+                path,
+            )
 
             response = await self._httpx_client.request(
                 method=method_str,
